@@ -1,12 +1,6 @@
 import os
 
-from setuptools import setup
-from setuptools_scm.version import ScmVersion, guess_next_dev_version
-
-
-def format_version(version: ScmVersion):
-    version.node = None
-    return guess_next_dev_version(version)
+from setuptools import setup, find_packages
 
 
 def long_description():
@@ -25,7 +19,7 @@ setup(
     long_description=long_description(),
     long_description_content_type='text/markdown',
     keywords="MongoDB AsyncIO ODM Pydantic",
-    packages=["motor_odm"],
+    packages=find_packages(),
     zip_safe=False,
     include_package_data=True,
     platforms='any',
@@ -40,10 +34,6 @@ setup(
             'pytest'
         ]
     },
-    use_scm_version={
-        "version_scheme": format_version
-    },
-    setup_requires=['wheel', 'setuptools_scm'],
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Developers',
