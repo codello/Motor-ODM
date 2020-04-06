@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [ master ]
+    tags: [ '**' ]
+
+jobs:
+  build:
+    name: Deploy Package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.7
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install wheel setuptools-scm twine
+          pip install -e .
+      - name: Build Package
+        run: |
+          python setup.py sdist bdist_wheel
+          twine check dist/*
+      - name: Upload Package
+        run: twine upload --repository-url https://test.pypi.org/legacy/ dist/*
+        env:
+          USERNAME: __token__
+          PASSWORD: $PYPI_TEST_TOKEN
