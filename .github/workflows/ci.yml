@@ -25,7 +25,7 @@ jobs:
           python setup.py sdist bdist_wheel
           twine check dist/*
       - name: Upload Package
-        run: twine upload --repository-url https://test.pypi.org/legacy/ dist/*
+        run: twine upload --non-interactive --repository-url https://test.pypi.org/legacy/ dist/*
         env:
-          USERNAME: __token__
-          PASSWORD: $PYPI_TEST_TOKEN
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: $PYPI_TEST_TOKEN

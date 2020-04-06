@@ -22,6 +22,7 @@ setup(
     author_email='codello@wittenburg.kim',
     description='A MongoDB ODM based on Motor and Pydantic.',
     long_description=__doc__,
+    long_description_content_type='text/markdown',
     keywords="MongoDB AsyncIO ODM Pydantic",
     packages=["motor_odm"],
     zip_safe=False,
@@ -33,6 +34,11 @@ setup(
         'Pydantic',
         'Funcy'
     ],
+    extras_require={
+        'dev': [
+            'pytest'
+        ]
+    },
     use_scm_version={
         "version_scheme": format_version
     },
