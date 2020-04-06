@@ -1,9 +1,4 @@
-"""
-Motor ODM
----------
-
-A MongoDB ODM based on Motor and Pydantic.
-"""
+import os
 
 from setuptools import setup
 from setuptools_scm.version import ScmVersion, guess_next_dev_version
@@ -14,6 +9,12 @@ def format_version(version: ScmVersion):
     return guess_next_dev_version(version)
 
 
+def long_description():
+    this_directory = os.path.abspath(os.path.dirname(__file__))
+    with open(os.path.join(this_directory, 'README.md'), encoding='utf-8') as f:
+        return f.read()
+
+
 setup(
     name='Motor-ODM',
     url='https://github.com/Codello/Motor-ODM/',
@@ -21,7 +22,7 @@ setup(
     author='Kim Wittenburg',
     author_email='codello@wittenburg.kim',
     description='A MongoDB ODM based on Motor and Pydantic.',
-    long_description=__doc__,
+    long_description=long_description(),
     long_description_content_type='text/markdown',
     keywords="MongoDB AsyncIO ODM Pydantic",
     packages=["motor_odm"],

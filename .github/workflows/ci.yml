@@ -1,31 +1,62 @@
 name: CI
 
-on:
-  push:
-    branches: [ master ]
-    tags: [ '**' ]
+on: push
 
 jobs:
   build:
-    name: Deploy Package
+    name: Build
+    # needs: [test-linux, test-windows-mac, test-fastapi]
+    if: "success() && (startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/master')"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python
         uses: actions/setup-python@v1
         with:
-          python-version: 3.7
-      - name: Install dependencies
+          python-version: '3.8'
+      - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install wheel setuptools-scm twine
+          pip install -U setuptools setuptools-scm wheel twine
           pip install -e .
-      - name: Build Package
-        run: |
-          python setup.py sdist bdist_wheel
-          twine check dist/*
-      - name: Upload Package
-        run: twine upload --non-interactive --repository-url https://test.pypi.org/legacy/ dist/*
+      - name: Build sdist
+        run: python setup.py sdist bdist_wheel
+        env:
+          SKIP_CYTHON: 1
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v1
+        with:
+          name: pypi_files
+          path: dist
+
+  deploy:
+    name: Deploy
+    needs: build
+    if: "success() && (startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/master')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.8
+      - name: Install Dependencies
+        run: pip install twine
+      - name: Get Build Artifacts
+        uses: actions/download-artifact@v1
+        with:
+          name: pypi_files
+      - name: Validate Build Artifacts
+        run: twine check pypi_files/*
+      - name: Upload to PyPI
+        if: "startsWith(github.ref, 'refs/tags/')"
+        run: twine upload --non-interactive pypi_files/*
         env:
           TWINE_USERNAME: __token__
-          TWINE_PASSWORD: $PYPI_TEST_TOKEN
+          TWINE_PASSWORD: ${{ secrets.pypi_token }}
+      - name: Upload to Test-PyPI
+        if: "github.ref == 'refs/heads/master'"
+        run: twine upload --non-interactive --repository-url https://test.pypi.org/legacy/ pypi_files/*
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.pipy_test_token }}
