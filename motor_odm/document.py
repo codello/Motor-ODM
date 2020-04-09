@@ -1,4 +1,5 @@
-from typing import Type, TypeVar, Union, TYPE_CHECKING, Sequence, Optional, AsyncIterator
+from contextlib import asynccontextmanager
+from typing import Type, TypeVar, Union, TYPE_CHECKING, Optional, AsyncIterator
 
 from bson import ObjectId, CodecOptions
 from motor.core import AgnosticDatabase, AgnosticCollection
@@ -6,11 +7,14 @@ from pydantic import BaseModel, Field
 from pydantic.main import ModelMetaclass
 from pymongo import WriteConcern, ReadPreference
 from pymongo.read_concern import ReadConcern
+from pymongo.results import InsertManyResult
 
 from motor_odm.helpers import inherit_class
+from motor_odm.query import create_query
 
 if TYPE_CHECKING:
     from pydantic.typing import AbstractSetIntStr, DictIntStrAny, DictStrAny
+    from motor_odm.query import Query
 
     GenericDocument = TypeVar("GenericDocument", bound='Document')
     MongoType = Type['MongoBase']
@@ -19,15 +23,37 @@ __all__ = ["DocumentMetaclass", "Document"]
 
 
 class MongoBase:
+    """This class defines the defaults for collection configurations.
+
+    Each collection (defined by a subclass of :ref:`Document`) can override these using a `Mongo` inner class.
+    Attributes are implicitly and transitively inherited from the Mongo classes of base classes.
+    """
+
     collection: str = None
+    """The name of the collection for a document. This attribute is required."""
+
     codec_options: CodecOptions = None
+    """The codec options to use when accessing the collection. Defaults to the database's `codec_options`."""
+
     read_preference: ReadPreference = None
+    """The read preference to use when accessing the collection. Defaults to the database's `read_preference`."""
+
     write_concern: WriteConcern = None
+    """The write concern to use when accessing the collection. Defaults to the database's `write_concern`."""
+
     read_concern: ReadConcern = None
+    """The read concern to use when accessing the collection. Defaults to the database's `read_concern`."""
 
 
 class DocumentMetaclass(ModelMetaclass):
+    """The meta class for `Document`. Ensures that the `Mongo` class is automatically inherited."""
+
     def __new__(mcs, name, bases, namespace, **kwargs):
+        """Creates a new `Document` subclass.
+
+        This method ensures that the `Mongo` class is correctly inherited and stores the final configuration as a
+        `__mongo__` attribute on the class.
+        """
         mongo = MongoBase
         for base in reversed(bases):
             if base != BaseModel and base != Document and issubclass(base, Document):
@@ -42,6 +68,12 @@ class DocumentMetaclass(ModelMetaclass):
 
 
 class Document(BaseModel, metaclass=DocumentMetaclass):
+    """This is the base class for all documents defined using Motor-ODM.
+
+    A `Document` is a pydantic model that can be inserted into a MongoDB collection. Each document has an `id` by
+    default by which it can be uniquely identified in the database.
+    """
+
     class Config:
         validate_all = True
         validate_assignment = True
@@ -60,18 +92,17 @@ class Document(BaseModel, metaclass=DocumentMetaclass):
     def use(cls: Type['Document'], db: AgnosticDatabase):
         assert db is not None
         cls.__db__ = db
-        cls.__collection__ = None
 
     @classmethod
     def db(cls) -> AgnosticDatabase:
-        if getattr(cls, '__db__'):
+        if not hasattr(cls, '__db__'):
             raise AttributeError("Accessing database without using it first.")
         return cls.__db__
 
     @classmethod
     def collection(cls: Type['Document']) -> AgnosticCollection:
         meta = cls.__mongo__
-        if not cls.__collection__:
+        if cls.__collection__ is None or cls.__collection__.database is not cls.db():
             cls.__collection__ = cls.db().get_collection(meta.collection,
                                                          codec_options=meta.codec_options,
                                                          read_preference=meta.read_preference,
@@ -85,29 +116,40 @@ class Document(BaseModel, metaclass=DocumentMetaclass):
         return self.dict(by_alias=True, include=include, exclude=exclude, exclude_defaults=True)
 
     @classmethod
-    async def batch_create(cls, objects: Sequence['Document']) -> None:
-        await cls.collection().insert_many([o.document() for o in objects])
+    async def count(cls, db_filter: 'Query' = None, **kwargs):
+        query = create_query(db_filter, **kwargs)
+        return await cls.collection().count_documents(query)
 
     @classmethod
-    async def all(cls: Type['GenericDocument']) -> AsyncIterator['GenericDocument']:
-        async for doc in cls.collection().find():
-            yield cls(**doc)
+    async def batch_insert(cls: Type['GenericDocument'], *objects: 'GenericDocument') -> None:
+        result: InsertManyResult = await cls.collection().insert_many([obj.document() for obj in objects])
+        for obj, inserted_id in zip(objects, result.inserted_ids):
+            obj.id = inserted_id
 
     @classmethod
-    async def get(cls: Type['GenericDocument'], filter: 'DictStrAny' = None, **kwargs) -> Optional['GenericDocument']:
-        if filter is None:
-            filter = {}
-        if filter is None:
-            for key, value in kwargs:
-                try:
-                    field = cls.__fields__.get(key)
-                #            mongo_filter[field.alias] = value
-                except KeyError:
-                    pass
+    async def get(cls: Type['GenericDocument'],
+                  db_filter: 'Query' = None,
+                  **kwargs) -> Optional['GenericDocument']:
+        query = create_query(db_filter, **kwargs)
+        doc = await cls.collection().find_one(query)
+        return cls(**doc) if doc else None
 
-        #           mongo_filter[key] = value
-        # TODO: Issue a warning here
-        # return cls.collection().find_one(**mongo_filter)
+    @classmethod
+    def all(cls: Type['GenericDocument']) -> AsyncIterator['GenericDocument']:
+        return cls.find()
+
+    @classmethod
+    def find(cls: Type['GenericDocument'],
+             db_filter: 'Query' = None,
+             **kwargs) -> AsyncIterator['GenericDocument']:
+        query = create_query(db_filter, **kwargs)
+
+        @asynccontextmanager
+        async def context():
+            async for doc in cls.collection().find(query):
+                yield cls(**doc)
+
+        return context()
 
     async def reload(self) -> None:
         updated = self.__class__(**await self.collection().find_one({"_id": self.id}))

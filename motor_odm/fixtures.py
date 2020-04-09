@@ -11,9 +11,9 @@ try:
 
 
     @monkey(fastapi.routing)
-    def _prepare_response_content(res: Any, *, by_alias: bool = True, exclude_unset: bool):
+    def _prepare_response_content(res: Any, *args, **kwargs):
         if isinstance(res, Document):
             return res
-        return _prepare_response_content.original(res, by_alias=by_alias, exclude_unset=exclude_unset)
+        return _prepare_response_content.original(res, **kwargs)
 except ImportError:
     pass
