@@ -1,3 +1,8 @@
+"""
+This module contains the base class for interacting with Motor-ODM: :class:`Document` as well as some important
+descendants.
+"""
+
 from contextlib import asynccontextmanager
 from typing import Type, TypeVar, Union, TYPE_CHECKING, Optional, AsyncIterator
 
@@ -25,35 +30,30 @@ __all__ = ["DocumentMetaclass", "Document"]
 class MongoBase:
     """This class defines the defaults for collection configurations.
 
-    Each collection (defined by a subclass of :ref:`Document`) can override these using a `Mongo` inner class.
-    Attributes are implicitly and transitively inherited from the Mongo classes of base classes.
+    Each collection (defined by a subclass of :class:`Document`) can override these using an inner class named
+    ``Mongo``. Attributes are implicitly and transitively inherited from the Mongo classes of base classes.
     """
 
     collection: str = None
     """The name of the collection for a document. This attribute is required."""
 
     codec_options: CodecOptions = None
-    """The codec options to use when accessing the collection. Defaults to the database's `codec_options`."""
+    """The codec options to use when accessing the collection. Defaults to the database's :attr:`codec_options`."""
 
     read_preference: ReadPreference = None
-    """The read preference to use when accessing the collection. Defaults to the database's `read_preference`."""
+    """The read preference to use when accessing the collection. Defaults to the database's :attr:`read_preference`."""
 
     write_concern: WriteConcern = None
-    """The write concern to use when accessing the collection. Defaults to the database's `write_concern`."""
+    """The write concern to use when accessing the collection. Defaults to the database's :attr:`write_concern`."""
 
     read_concern: ReadConcern = None
-    """The read concern to use when accessing the collection. Defaults to the database's `read_concern`."""
+    """The read concern to use when accessing the collection. Defaults to the database's :attr:`read_concern`."""
 
 
 class DocumentMetaclass(ModelMetaclass):
-    """The meta class for `Document`. Ensures that the `Mongo` class is automatically inherited."""
+    """The meta class for :class:`Document`. Ensures that the ``Mongo`` class is automatically inherited."""
 
     def __new__(mcs, name, bases, namespace, **kwargs):
-        """Creates a new `Document` subclass.
-
-        This method ensures that the `Mongo` class is correctly inherited and stores the final configuration as a
-        `__mongo__` attribute on the class.
-        """
         mongo = MongoBase
         for base in reversed(bases):
             if base != BaseModel and base != Document and issubclass(base, Document):
