@@ -10,7 +10,7 @@ def create_query(db_filter: "Query" = None, **kwargs: Any) -> "DictStrAny":
     if db_filter is None:
         query = {}
     elif not isinstance(db_filter, dict):
-        return {"_id": db_filter}
+        query = {"_id": db_filter}
     else:
         query = dict(db_filter)
     query.update(kwargs)

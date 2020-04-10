@@ -21,6 +21,23 @@ jobs:
         run: invoke isort --check
       - name: Run MyPy
         run: invoke mypy
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v1
+        with:
+          python-version: '3.8'
+      - name: Install Dependencies
+        run: pip install .[dev]
+      - name: Start MongoDB
+        uses: supercharge/mongodb-github-action@1.2.0
+        with:
+          mongodb-version: 4.2
+      - name: Run Pytest
+        run: invoke test
   docs:
     name: Build Documentation
     runs-on: ubuntu-latest
@@ -46,7 +63,6 @@ jobs:
           path: docs/build/html
   build:
     name: Build Package
-    # needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -73,7 +89,7 @@ jobs:
 
   deploy:
     name: Deploy to PyPI
-    needs: [lint, build]
+    needs: [lint, test, build]
     if: "success() && startsWith(github.ref, 'refs/tags/')"
     runs-on: ubuntu-latest
     steps:

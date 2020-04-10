@@ -2,6 +2,12 @@ from invoke import Context, task
 
 
 @task
+def test(c):
+    c: Context
+    c.run("pytest")
+
+
+@task
 def black(c, check=False):
     c: Context
     if check:
