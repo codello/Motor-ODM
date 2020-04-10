@@ -31,16 +31,18 @@ setup(
     install_requires=[
         'PyMongo',
         'Motor',
-        'Pydantic',
-        'Funcy'
+        'Pydantic'
     ],
     extras_require={
         'docs': list_requirements('docs/requirements.txt'),
         'dev': [
             'pytest',
             'flake8',
-            'isort'
-        ]
+            'isort',
+            'mypy',
+            'invoke'
+        ],
+        'typing': ['fastapi']
     },
     classifiers=[
         'Development Status :: 3 - Alpha',

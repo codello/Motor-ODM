@@ -3,8 +3,7 @@ This module contains the base class for interacting with Motor-ODM: :class:`Docu
 descendants.
 """
 
-from contextlib import asynccontextmanager
-from typing import TYPE_CHECKING, AsyncIterator, Optional, Type, TypeVar, Union
+from typing import TYPE_CHECKING, Any, AsyncIterator, Optional, Sequence, Type, TypeVar, Union
 
 from bson import CodecOptions
 from motor.core import AgnosticCollection, AgnosticDatabase
@@ -19,7 +18,7 @@ from .helpers import inherit_class
 from .query import create_query
 
 if TYPE_CHECKING:
-    from pydantic.typing import DictStrAny
+    from pydantic.typing import DictStrAny, AbstractSetIntStr, DictIntStrAny  # noqa: F401
     from motor_odm.query import Query
 
     GenericDocument = TypeVar("GenericDocument", bound='Document')
@@ -35,37 +34,37 @@ class MongoBase:
     ``Mongo``. Attributes are implicitly and transitively inherited from the Mongo classes of base classes.
     """
 
-    collection: str = None
+    collection: Optional[str]
     """The name of the collection for a document. This attribute is required."""
 
-    codec_options: CodecOptions = None
+    codec_options: Optional[CodecOptions] = None
     """The codec options to use when accessing the collection. Defaults to the database's :attr:`codec_options`."""
 
-    read_preference: ReadPreference = None
+    read_preference: Optional[ReadPreference] = None
     """The read preference to use when accessing the collection. Defaults to the database's :attr:`read_preference`."""
 
-    write_concern: WriteConcern = None
+    write_concern: Optional[WriteConcern] = None
     """The write concern to use when accessing the collection. Defaults to the database's :attr:`write_concern`."""
 
-    read_concern: ReadConcern = None
+    read_concern: Optional[ReadConcern] = None
     """The read concern to use when accessing the collection. Defaults to the database's :attr:`read_concern`."""
 
 
 class DocumentMetaclass(ModelMetaclass):
     """The meta class for :class:`Document`. Ensures that the ``Mongo`` class is automatically inherited."""
 
-    def __new__(mcs, name, bases, namespace, **kwargs):
-        mongo = MongoBase
+    def __new__(mcs, name: str, bases: Sequence[type], namespace: 'DictStrAny', **kwargs: Any) -> 'DocumentMetaclass':
+        mongo: MongoType = MongoBase
         for base in reversed(bases):
             if base != BaseModel and base != Document and issubclass(base, Document):
                 mongo = inherit_class('Mongo', base.__mongo__, mongo)
         mongo = inherit_class('Mongo', namespace.get('Mongo'), mongo)
 
         if (namespace.get('__module__'), namespace.get('__qualname__')) != ('motor_odm.document', 'Document'):
-            if mongo.collection is None:
+            if not hasattr(mongo, 'collection'):
                 raise TypeError(f"{name} does not define a collection.")
 
-        return super().__new__(mcs, name, bases, {'__mongo__': mongo, **namespace}, **kwargs)
+        return super().__new__(mcs, name, bases, {'__mongo__': mongo, **namespace}, **kwargs)  # type: ignore
 
 
 class Document(BaseModel, metaclass=DocumentMetaclass):
@@ -90,7 +89,7 @@ class Document(BaseModel, metaclass=DocumentMetaclass):
     id: ObjectId = Field(None, alias="_id")
 
     @classmethod
-    def use(cls: Type['Document'], db: AgnosticDatabase):
+    def use(cls: Type['Document'], db: AgnosticDatabase) -> None:
         assert db is not None
         cls.__db__ = db
 
@@ -117,9 +116,9 @@ class Document(BaseModel, metaclass=DocumentMetaclass):
         return self.dict(by_alias=True, include=include, exclude=exclude, exclude_defaults=True)
 
     @classmethod
-    async def count(cls, db_filter: 'Query' = None, **kwargs):
+    async def count(cls, db_filter: 'Query' = None, **kwargs: Any) -> int:
         query = create_query(db_filter, **kwargs)
-        return await cls.collection().count_documents(query)
+        return await cls.collection().count_documents(query)  # type: ignore
 
     @classmethod
     async def batch_insert(cls: Type['GenericDocument'], *objects: 'GenericDocument') -> None:
@@ -130,7 +129,7 @@ class Document(BaseModel, metaclass=DocumentMetaclass):
     @classmethod
     async def get(cls: Type['GenericDocument'],
                   db_filter: 'Query' = None,
-                  **kwargs) -> Optional['GenericDocument']:
+                  **kwargs: Any) -> Optional['GenericDocument']:
         query = create_query(db_filter, **kwargs)
         doc = await cls.collection().find_one(query)
         return cls(**doc) if doc else None
@@ -142,11 +141,10 @@ class Document(BaseModel, metaclass=DocumentMetaclass):
     @classmethod
     def find(cls: Type['GenericDocument'],
              db_filter: 'Query' = None,
-             **kwargs) -> AsyncIterator['GenericDocument']:
+             **kwargs: Any) -> AsyncIterator['GenericDocument']:
         query = create_query(db_filter, **kwargs)
 
-        @asynccontextmanager
-        async def context():
+        async def context() -> AsyncIterator['GenericDocument']:
             async for doc in cls.collection().find(query):
                 yield cls(**doc)
 

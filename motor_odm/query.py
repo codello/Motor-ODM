@@ -6,12 +6,12 @@ if TYPE_CHECKING:
     Query = Optional[Union[DictStrAny, Any]]
 
 
-def create_query(query: 'Query' = None, **kwargs) -> 'DictStrAny':
-    if query is None:
+def create_query(db_filter: 'Query' = None, **kwargs: Any) -> 'DictStrAny':
+    if db_filter is None:
         query = {}
-    elif not isinstance(query, dict):
-        return {"_id": query}
+    elif not isinstance(db_filter, dict):
+        return {"_id": db_filter}
     else:
-        query = dict(query)
+        query = dict(db_filter)
     query.update(kwargs)
     return query
