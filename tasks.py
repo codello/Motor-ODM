@@ -51,3 +51,9 @@ def lint(c):
     mypy(c)
     print("Running isort...")
     isort(c, check=True)
+
+
+@task
+def make_docs(c):
+    c: Context
+    c.run("cd docs && make html")

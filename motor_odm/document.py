@@ -22,8 +22,8 @@ from pymongo import ReadPreference, WriteConcern
 from pymongo.read_concern import ReadConcern
 from pymongo.results import InsertManyResult
 
-from .fixtures import ObjectId
 from .helpers import inherit_class
+from .id import ObjectId
 from .query import create_query
 
 if TYPE_CHECKING:
