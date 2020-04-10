@@ -6,7 +6,7 @@ descendants.
 from contextlib import asynccontextmanager
 from typing import Type, TypeVar, Union, TYPE_CHECKING, Optional, AsyncIterator
 
-from bson import ObjectId, CodecOptions
+from bson import CodecOptions
 from motor.core import AgnosticDatabase, AgnosticCollection
 from pydantic import BaseModel, Field
 from pydantic.main import ModelMetaclass
@@ -14,11 +14,12 @@ from pymongo import WriteConcern, ReadPreference
 from pymongo.read_concern import ReadConcern
 from pymongo.results import InsertManyResult
 
-from motor_odm.helpers import inherit_class
-from motor_odm.query import create_query
+from .fixtures import ObjectId
+from .helpers import inherit_class
+from .query import create_query
 
 if TYPE_CHECKING:
-    from pydantic.typing import AbstractSetIntStr, DictIntStrAny, DictStrAny
+    from pydantic.typing import DictStrAny
     from motor_odm.query import Query
 
     GenericDocument = TypeVar("GenericDocument", bound='Document')

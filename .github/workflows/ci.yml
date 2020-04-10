@@ -2,6 +2,20 @@ name: CI
 on: push
 
 jobs:
+  lint:
+    name: Lint with Flake8
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v1
+        with:
+          python-version: '3.8'
+      - name: Install Dependencies
+        run: pip install .[dev]
+      - name: Run Flake8
+        run: flake8
+        continue-on-error: true
   docs:
     name: Build Documentation
     runs-on: ubuntu-latest

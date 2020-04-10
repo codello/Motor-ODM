@@ -38,6 +38,7 @@ setup(
         'docs': list_requirements('docs/requirements.txt'),
         'dev': [
             'pytest',
+            'flake8'
         ]
     },
     classifiers=[
