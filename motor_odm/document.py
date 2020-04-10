@@ -3,7 +3,16 @@ This module contains the base class for interacting with Motor-ODM: :class:`Docu
 descendants.
 """
 
-from typing import TYPE_CHECKING, Any, AsyncIterator, Optional, Sequence, Type, TypeVar, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    AsyncIterator,
+    Optional,
+    Sequence,
+    Type,
+    TypeVar,
+    Union,
+)
 
 from bson import CodecOptions
 from motor.core import AgnosticCollection, AgnosticDatabase
@@ -18,11 +27,15 @@ from .helpers import inherit_class
 from .query import create_query
 
 if TYPE_CHECKING:
-    from pydantic.typing import DictStrAny, AbstractSetIntStr, DictIntStrAny  # noqa: F401
+    from pydantic.typing import (  # noqa: F401
+        DictStrAny,
+        AbstractSetIntStr,
+        DictIntStrAny,
+    )
     from motor_odm.query import Query
 
-    GenericDocument = TypeVar("GenericDocument", bound='Document')
-    MongoType = Type['MongoBase']
+    GenericDocument = TypeVar("GenericDocument", bound="Document")
+    MongoType = Type["MongoBase"]
 
 __all__ = ["DocumentMetaclass", "Document"]
 
@@ -53,18 +66,23 @@ class MongoBase:
 class DocumentMetaclass(ModelMetaclass):
     """The meta class for :class:`Document`. Ensures that the ``Mongo`` class is automatically inherited."""
 
-    def __new__(mcs, name: str, bases: Sequence[type], namespace: 'DictStrAny', **kwargs: Any) -> 'DocumentMetaclass':
+    def __new__(
+        mcs, name: str, bases: Sequence[type], namespace: "DictStrAny", **kwargs: Any
+    ) -> "DocumentMetaclass":
         mongo: MongoType = MongoBase
         for base in reversed(bases):
             if base != BaseModel and base != Document and issubclass(base, Document):
-                mongo = inherit_class('Mongo', base.__mongo__, mongo)
-        mongo = inherit_class('Mongo', namespace.get('Mongo'), mongo)
+                mongo = inherit_class("Mongo", base.__mongo__, mongo)
+        mongo = inherit_class("Mongo", namespace.get("Mongo"), mongo)
 
-        if (namespace.get('__module__'), namespace.get('__qualname__')) != ('motor_odm.document', 'Document'):
-            if not hasattr(mongo, 'collection'):
+        if (namespace.get("__module__"), namespace.get("__qualname__")) != (
+            "motor_odm.document",
+            "Document",
+        ):
+            if not hasattr(mongo, "collection"):
                 raise TypeError(f"{name} does not define a collection.")
 
-        return super().__new__(mcs, name, bases, {'__mongo__': mongo, **namespace}, **kwargs)  # type: ignore
+        return super().__new__(mcs, name, bases, {"__mongo__": mongo, **namespace}, **kwargs)  # type: ignore
 
 
 class Document(BaseModel, metaclass=DocumentMetaclass):
@@ -89,62 +107,73 @@ class Document(BaseModel, metaclass=DocumentMetaclass):
     id: ObjectId = Field(None, alias="_id")
 
     @classmethod
-    def use(cls: Type['Document'], db: AgnosticDatabase) -> None:
+    def use(cls: Type["Document"], db: AgnosticDatabase) -> None:
         assert db is not None
         cls.__db__ = db
 
     @classmethod
     def db(cls) -> AgnosticDatabase:
-        if not hasattr(cls, '__db__'):
+        if not hasattr(cls, "__db__"):
             raise AttributeError("Accessing database without using it first.")
         return cls.__db__
 
     @classmethod
-    def collection(cls: Type['Document']) -> AgnosticCollection:
+    def collection(cls: Type["Document"]) -> AgnosticCollection:
         meta = cls.__mongo__
         if cls.__collection__ is None or cls.__collection__.database is not cls.db():
-            cls.__collection__ = cls.db().get_collection(meta.collection,
-                                                         codec_options=meta.codec_options,
-                                                         read_preference=meta.read_preference,
-                                                         write_concern=meta.write_concern,
-                                                         read_concern=meta.read_concern)
+            cls.__collection__ = cls.db().get_collection(
+                meta.collection,
+                codec_options=meta.codec_options,
+                read_preference=meta.read_preference,
+                write_concern=meta.write_concern,
+                read_concern=meta.read_concern,
+            )
         return cls.__collection__
 
-    def document(self, *,
-                 include: Union['AbstractSetIntStr', 'DictIntStrAny'] = None,
-                 exclude: Union['AbstractSetIntStr', 'DictIntStrAny'] = None) -> 'DictStrAny':
-        return self.dict(by_alias=True, include=include, exclude=exclude, exclude_defaults=True)
+    def document(
+        self,
+        *,
+        include: Union["AbstractSetIntStr", "DictIntStrAny"] = None,
+        exclude: Union["AbstractSetIntStr", "DictIntStrAny"] = None,
+    ) -> "DictStrAny":
+        return self.dict(
+            by_alias=True, include=include, exclude=exclude, exclude_defaults=True
+        )
 
     @classmethod
-    async def count(cls, db_filter: 'Query' = None, **kwargs: Any) -> int:
+    async def count(cls, db_filter: "Query" = None, **kwargs: Any) -> int:
         query = create_query(db_filter, **kwargs)
         return await cls.collection().count_documents(query)  # type: ignore
 
     @classmethod
-    async def batch_insert(cls: Type['GenericDocument'], *objects: 'GenericDocument') -> None:
-        result: InsertManyResult = await cls.collection().insert_many([obj.document() for obj in objects])
+    async def batch_insert(
+        cls: Type["GenericDocument"], *objects: "GenericDocument"
+    ) -> None:
+        result: InsertManyResult = await cls.collection().insert_many(
+            [obj.document() for obj in objects]
+        )
         for obj, inserted_id in zip(objects, result.inserted_ids):
             obj.id = inserted_id
 
     @classmethod
-    async def get(cls: Type['GenericDocument'],
-                  db_filter: 'Query' = None,
-                  **kwargs: Any) -> Optional['GenericDocument']:
+    async def get(
+        cls: Type["GenericDocument"], db_filter: "Query" = None, **kwargs: Any
+    ) -> Optional["GenericDocument"]:
         query = create_query(db_filter, **kwargs)
         doc = await cls.collection().find_one(query)
         return cls(**doc) if doc else None
 
     @classmethod
-    def all(cls: Type['GenericDocument']) -> AsyncIterator['GenericDocument']:
+    def all(cls: Type["GenericDocument"]) -> AsyncIterator["GenericDocument"]:
         return cls.find()
 
     @classmethod
-    def find(cls: Type['GenericDocument'],
-             db_filter: 'Query' = None,
-             **kwargs: Any) -> AsyncIterator['GenericDocument']:
+    def find(
+        cls: Type["GenericDocument"], db_filter: "Query" = None, **kwargs: Any
+    ) -> AsyncIterator["GenericDocument"]:
         query = create_query(db_filter, **kwargs)
 
-        async def context() -> AsyncIterator['GenericDocument']:
+        async def context() -> AsyncIterator["GenericDocument"]:
             async for doc in cls.collection().find(query):
                 yield cls(**doc)
 
@@ -152,7 +181,7 @@ class Document(BaseModel, metaclass=DocumentMetaclass):
 
     async def reload(self) -> None:
         updated = self.__class__(**await self.collection().find_one({"_id": self.id}))
-        object.__setattr__(self, '__dict__', updated.__dict__)
+        object.__setattr__(self, "__dict__", updated.__dict__)
 
     async def insert(self) -> None:
         result = await self.collection().insert_one(self.document())

@@ -2,6 +2,15 @@ from invoke import Context, task
 
 
 @task
+def black(c, check=False):
+    c: Context
+    if check:
+        c.run("black motor_odm --check")
+    else:
+        c.run("black motor_odm")
+
+
+@task
 def flake8(c):
     c: Context
     c.run("flake8")
@@ -23,11 +32,22 @@ def isort(c, check=False):
 
 
 @task
+def format(c):
+    c: Context
+    print("Formatting with Black...")
+    black(c)
+    print("Sorting Imports...")
+    isort(c)
+
+
+@task
 def lint(c):
     c: Context
-    print("Running flake8")
+    print("Running Black...")
+    black(c, check=True)
+    print("Running flake8...")
     flake8(c)
-    print("Running MyPy")
+    print("Running MyPy...")
     mypy(c)
-    print("Running isort")
+    print("Running isort...")
     isort(c, check=True)

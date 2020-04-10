@@ -13,6 +13,8 @@ jobs:
           python-version: '3.8'
       - name: Install Dependencies
         run: pip install .[dev,typing]
+      - name: Run Black
+        run: invoke black --check
       - name: Run Flake8
         run: invoke flake8
       - name: Run isort
@@ -71,7 +73,7 @@ jobs:
 
   deploy:
     name: Deploy to PyPI
-    needs: build
+    needs: [lint, build]
     if: "success() && startsWith(github.ref, 'refs/tags/')"
     runs-on: ubuntu-latest
     steps:
@@ -85,10 +87,11 @@ jobs:
         uses: actions/download-artifact@v1
         with:
           name: PyPI Files
+          path: dist
       - name: Validate Build Artifacts
-        run: twine check pypi_files/*
+        run: twine check dist/*
       - name: Upload to PyPI
-        run: twine upload --non-interactive pypi_files/*
+        run: twine upload --non-interactive dist/*
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.pypi_token }}

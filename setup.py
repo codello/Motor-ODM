@@ -40,7 +40,8 @@ setup(
             'flake8',
             'isort',
             'mypy',
-            'invoke'
+            'invoke',
+            'black'
         ],
         'typing': ['fastapi']
     },
