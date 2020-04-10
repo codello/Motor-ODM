@@ -1,0 +1,23 @@
+name: Documentation
+on: push
+
+jobs:
+  build:
+    name: Build Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          # We need to fetch all commits up to the last tag to read the correct version number
+          fetch-depth: 50
+      - name: Run Sphinx
+        uses: ammaraskar/sphinx-action@master
+        with:
+          docs-folder: "docs/"
+          pre-build-command: "apt-get update -y && apt-get install -y git"
+          build-command: "make html"
+      - name: Upload HTML Docs
+        uses: actions/upload-artifact@v1
+        with:
+          name: HTML Docs
+          path: docs/build/html

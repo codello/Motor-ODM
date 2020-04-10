@@ -1,4 +1,4 @@
-name: CI
+name: Continuous Integration
 on: push
 
 jobs:
@@ -21,6 +21,7 @@ jobs:
         run: invoke isort --check
       - name: Run MyPy
         run: invoke mypy
+
   test:
     name: Run Tests
     runs-on: ubuntu-latest
@@ -38,29 +39,7 @@ jobs:
           mongodb-version: 4.2
       - name: Run Pytest
         run: invoke test
-  docs:
-    name: Build Documentation
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          # We need to fetch all commits up to the last tag to read the correct version number
-          fetch-depth: 50
-      - name: Set up Python
-        uses: actions/setup-python@v1
-        with:
-          python-version: '3.8'
-      - name: Run Sphinx
-        uses: ammaraskar/sphinx-action@master
-        with:
-          docs-folder: "docs/"
-          pre-build-command: "apt-get update -y && apt-get install -y git"
-          build-command: "make html"
-      - name: Upload HTML Docs
-        uses: actions/upload-artifact@v1
-        with:
-          name: HTML Docs
-          path: docs/build/html
+
   build:
     name: Build Package
     runs-on: ubuntu-latest
