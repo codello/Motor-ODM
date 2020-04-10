@@ -133,7 +133,7 @@ class Document(BaseModel, metaclass=DocumentMetaclass):
 
     id: ObjectId = Field(None, alias="_id")
     """The document's ID in the database.
-    
+
     By default this field is of type :class:`ObjectId <bson.objectid.ObjectId>` but it can be overridden to supply your
     own ID types. Note that if you intend to override this field you **must** set its alias to ``_id`` in order for your
     IDs to be recognized as such by MongoDB.
@@ -142,9 +142,9 @@ class Document(BaseModel, metaclass=DocumentMetaclass):
     @classmethod
     def use(cls: Type["Document"], db: AgnosticDatabase) -> None:
         """Sets the database to be used by this :class:`Document`.
-        
+
         The database will also be used by subclasses of this class unless they :meth:`use` their own database.
-        
+
         This method has to be invoked before the ODM class can be used.
         """
         assert db is not None
@@ -155,7 +155,7 @@ class Document(BaseModel, metaclass=DocumentMetaclass):
         """Returns the database that is currently associated with this document.
 
         If no such database exists this returns the database of the parent document (its superclass). If no
-        :class:`Document` class had its :meth:`use` method called to set a db, an :class:`AttributeError` is raised.        
+        :class:`Document` class had its :meth:`use` method called to set a db, an :class:`AttributeError` is raised.
         """
         if not hasattr(cls, "__db__"):
             raise AttributeError("Accessing database without using it first.")
@@ -164,7 +164,7 @@ class Document(BaseModel, metaclass=DocumentMetaclass):
     @classmethod
     def collection(cls: Type["Document"]) -> AgnosticCollection:
         """Returns the collection for this :class:`Document`.
-        
+
         The collection uses the ``codec_options``, ``read_preference``, ``write_concern`` and ``read_concern`` from the
         document's ```Mongo``` class.
         """
@@ -193,7 +193,7 @@ class Document(BaseModel, metaclass=DocumentMetaclass):
     @classmethod
     async def count(cls, db_filter: "Query" = None, **kwargs: Any) -> int:
         """Returns the number of documents in this class's collection.
-        
+
         This method is filterable."""
         query = create_query(db_filter, **kwargs)
         return await cls.collection().count_documents(query)  # type: ignore
@@ -203,7 +203,7 @@ class Document(BaseModel, metaclass=DocumentMetaclass):
         cls: Type["GenericDocument"], *objects: "GenericDocument"
     ) -> None:
         """Inserts multiple documents at once.
-        
+
         It is preferred to use this method over multiple :meth:`insert` calls as the performance can be much better.
         """
         result: InsertManyResult = await cls.collection().insert_many(
@@ -217,7 +217,7 @@ class Document(BaseModel, metaclass=DocumentMetaclass):
         cls: Type["GenericDocument"], db_filter: "Query" = None, **kwargs: Any
     ) -> Optional["GenericDocument"]:
         """Returns a single document from the collection.
-        
+
         This method is filterable.
         """
         query = create_query(db_filter, **kwargs)
@@ -229,7 +229,7 @@ class Document(BaseModel, metaclass=DocumentMetaclass):
         cls: Type["GenericDocument"], db_filter: "Query" = None, **kwargs: Any
     ) -> AsyncIterator["GenericDocument"]:
         """Returns multiple documents from the collection.
-        
+
         This method is filterable.
         """
         query = create_query(db_filter, **kwargs)
@@ -244,7 +244,7 @@ class Document(BaseModel, metaclass=DocumentMetaclass):
 
     async def reload(self) -> None:
         """Reloads a document from the database.
-        
+
         Use this method if a model might have changed in the database and you need to retrieve the current version. You
         do **not** need to call this after inserting a newly created object into the database.
         """
@@ -253,7 +253,7 @@ class Document(BaseModel, metaclass=DocumentMetaclass):
 
     async def insert(self) -> None:
         """Inserts the object into the database.
-        
+
         The object is inserted as a new object.
         """
         result = await self.collection().insert_one(self.document())
