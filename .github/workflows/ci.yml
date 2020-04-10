@@ -10,17 +10,21 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v1
         with:
-          python-version: '3.8'
+          python-version: 3.x
       - name: Install Dependencies
         run: pip install .[dev,typing]
       - name: Run Black
         run: invoke black --check
+        if: "always()"
       - name: Run Flake8
         run: invoke flake8
+        if: "always()"
       - name: Run isort
         run: invoke isort --check
+        if: "always()"
       - name: Run MyPy
         run: invoke mypy
+        if: "always()"
 
   test:
     name: Run Tests
@@ -30,7 +34,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v1
         with:
-          python-version: '3.8'
+          python-version: 3.x
       - name: Install Dependencies
         run: pip install .[dev]
       - name: Start MongoDB
@@ -51,7 +55,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v1
         with:
-          python-version: '3.8'
+          python-version: 3.x
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
@@ -75,7 +79,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v1
         with:
-          python-version: 3.8
+          python-version: 3.x
       - name: Install Dependencies
         run: pip install twine
       - name: Get Build Artifacts

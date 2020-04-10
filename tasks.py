@@ -8,6 +8,12 @@ def test(c):
 
 
 @task
+def doctest(c):
+    c: Context
+    c.run("pytest --doctest-modules --doctest-continue-on-failure motor_odm")
+
+
+@task
 def black(c, check=False):
     c: Context
     if check:
