@@ -1,16 +1,10 @@
-# Configuration file for the Sphinx documentation builder.
-#
-# This file only contains a selection of the most common options. For a full
-# list see the documentation:
-# https://www.sphinx-doc.org/en/master/usage/configuration.html
-
 # -- Path setup --------------------------------------------------------------
 
 import os
 import sys
 
 from setuptools_scm import get_version
-from setuptools_scm.version import guess_next_dev_version, ScmVersion
+from setuptools_scm.version import ScmVersion, guess_next_dev_version
 
 sys.path.insert(0, os.path.abspath('..'))
 

@@ -15,7 +15,8 @@ jobs:
         run: pip install .[dev]
       - name: Run Flake8
         run: flake8
-        continue-on-error: true
+      - name: Run ISort
+        run: isort -rc --check-only
   docs:
     name: Build Documentation
     runs-on: ubuntu-latest

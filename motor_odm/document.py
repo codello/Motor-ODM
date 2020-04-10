@@ -4,13 +4,13 @@ descendants.
 """
 
 from contextlib import asynccontextmanager
-from typing import Type, TypeVar, Union, TYPE_CHECKING, Optional, AsyncIterator
+from typing import TYPE_CHECKING, AsyncIterator, Optional, Type, TypeVar, Union
 
 from bson import CodecOptions
-from motor.core import AgnosticDatabase, AgnosticCollection
+from motor.core import AgnosticCollection, AgnosticDatabase
 from pydantic import BaseModel, Field
 from pydantic.main import ModelMetaclass
-from pymongo import WriteConcern, ReadPreference
+from pymongo import ReadPreference, WriteConcern
 from pymongo.read_concern import ReadConcern
 from pymongo.results import InsertManyResult
 

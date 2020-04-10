@@ -1,6 +1,6 @@
 import os
 
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 
 def long_description():
@@ -38,7 +38,8 @@ setup(
         'docs': list_requirements('docs/requirements.txt'),
         'dev': [
             'pytest',
-            'flake8'
+            'flake8',
+            'isort'
         ]
     },
     classifiers=[
