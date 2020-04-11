@@ -120,6 +120,8 @@ class Document(BaseModel, metaclass=DocumentMetaclass):
     """
 
     class Config:
+        """:meta private:"""
+
         validate_all = True
         validate_assignment = True
         allow_population_by_field_name = True

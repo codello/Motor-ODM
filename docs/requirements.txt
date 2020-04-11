@@ -1,4 +1,5 @@
 sphinx~=3.0.0
 setuptools-scm
 sphinx-rtd-theme
+sphinxcontrib-apidoc
 .

@@ -1,0 +1,8 @@
+{%- if show_headings %}
+{{- ["Module :mod:`", basename | e, "`"] | join | heading }}
+{% endif -%}
+
+.. automodule:: {{ qualname }}
+{%- for option in automodule_options %}
+   :{{ option }}:
+{%- endfor %}
