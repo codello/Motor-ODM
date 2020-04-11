@@ -29,6 +29,7 @@ to start.
 
 
 .. toctree::
+   :titlesonly:
    :caption: Table of Contents
    :name: Contents
 

@@ -7,43 +7,43 @@ def test(c, coverage=False):
     args = ["pytest"]
     if coverage:
         args.extend(["--cov", "--cov-report=xml", "--cov-report=html"])
-    c.run(" ".join(args))
+    c.run(" ".join(args), pty=True)
 
 
 @task
 def doctest(c):
     c: Context
-    c.run("pytest --doctest-modules --doctest-continue-on-failure motor_odm")
+    c.run("pytest --doctest-modules --doctest-continue-on-failure motor_odm", pty=True)
 
 
 @task
 def black(c, check=False):
     c: Context
     if check:
-        c.run("black motor_odm --check")
+        c.run("black motor_odm --check", pty=True)
     else:
-        c.run("black motor_odm")
+        c.run("black motor_odm", pty=True)
 
 
 @task
 def flake8(c):
     c: Context
-    c.run("flake8")
+    c.run("flake8", pty=True)
 
 
 @task
 def mypy(c):
     c: Context
-    c.run("mypy motor_odm")
+    c.run("mypy motor_odm", pty=True)
 
 
 @task
 def isort(c, check=False):
     c: Context
     if check:
-        c.run("isort -rc --check-only")
+        c.run("isort -rc --check-only", pty=True)
     else:
-        c.run("isort -rc")
+        c.run("isort -rc", pty=True)
 
 
 @task
@@ -71,7 +71,7 @@ def lint(c):
 @task
 def build_docs(c):
     c: Context
-    c.run("cd docs && make html")
+    c.run("cd docs && make html", pty=True)
 
 
 @task
