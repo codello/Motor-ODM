@@ -9,6 +9,7 @@ from typing import (
     AsyncIterator,
     Callable,
     Iterator,
+    Mapping,
     Optional,
     Sequence,
     Type,
@@ -21,6 +22,7 @@ from motor.core import AgnosticCollection, AgnosticDatabase
 from pydantic import BaseModel, Field
 from pydantic.main import ModelMetaclass
 from pymongo import ReadPreference, ReturnDocument, WriteConcern
+from pymongo.errors import DuplicateKeyError
 from pymongo.read_concern import ReadConcern
 
 from motor_odm.helpers import monkey_patch
@@ -192,13 +194,17 @@ class Document(BaseModel, metaclass=DocumentMetaclass):
             document.pop("_id", None)
         return document
 
-    async def insert(self, *args: Any, **kwargs: Any) -> None:
+    async def insert(self, *args: Any, **kwargs: Any) -> bool:
         """Inserts the object into the database.
 
         The object is inserted as a new object.
         """
-        result = await self.collection().insert_one(self.mongo(), *args, **kwargs)
-        self.id = result.inserted_id
+        try:
+            result = await self.collection().insert_one(self.mongo(), *args, **kwargs)
+            self.id = result.inserted_id
+            return True
+        except DuplicateKeyError:
+            return False
 
     @classmethod
     async def insert_many(
@@ -214,40 +220,32 @@ class Document(BaseModel, metaclass=DocumentMetaclass):
         for obj, inserted_id in zip(objects, result.inserted_ids):
             obj.id = inserted_id
 
-    async def replace(
-        self: "GenericDocument", replace: "GenericDocument", *args: Any, **kwargs: Any,
-    ) -> "GenericDocument":
-        result = await self.collection().replace_one(
-            self.mongo(), replace.mongo(), *args, **kwargs
-        )
-        if result.upserted_id:
-            replace.id = result.upserted_id
-        elif replace.id is None:
-            replace.id = self.id
-        return replace
-
-    async def update(
-        self, update: "DictStrAny", reload: bool = False, *args: Any, **kwargs: Any
-    ) -> bool:
+    async def save(self, *args: Any, **kwargs: Any,) -> bool:
         assert self.id is not None
-        result = await self.collection().update_one(
-            {"_id": self.id}, update, *args, **kwargs
+        result = await self.collection().replace_one(
+            {"_id": self.id}, self.mongo(), *args, **kwargs
         )
-        if reload:
-            await self.reload()
         return result.modified_count == 1  # type: ignore
 
-    async def reload(self, *args: Any, **kwargs: Any) -> None:
+    async def upsert(self, *args: Any, **kwargs: Any) -> bool:
+        if self.id is None:
+            return await self.insert(*args, **kwargs)
+        else:
+            return await self.save(*args, **kwargs)
+
+    async def reload(self, *args: Any, **kwargs: Any) -> bool:
         """Reloads a document from the database.
 
         Use this method if a model might have changed in the database and you need to retrieve the current version. You
         do **not** need to call this after inserting a newly created object into the database.
         """
         assert self.id is not None
-        updated = self.__class__(
-            **await self.collection().find_one({"_id": self.id}, *args, **kwargs)
-        )
+        result = await self.collection().find_one({"_id": self.id}, *args, **kwargs)
+        if result is None:
+            return False
+        updated = self.__class__(**result)
         object.__setattr__(self, "__dict__", updated.__dict__)
+        return True
 
     async def delete(self, *args: Any, **kwargs: Any) -> bool:
         result = await self.collection().delete_one(self.mongo(), *args, **kwargs)
@@ -257,7 +255,8 @@ class Document(BaseModel, metaclass=DocumentMetaclass):
     async def delete_many(
         cls: Type["GenericDocument"], *objects: "GenericDocument"
     ) -> int:
-        result = await cls.collection().delete_many([obj.mongo() for obj in objects])
+        filter = {"_id": {"$in": [obj.id for obj in objects]}}
+        result = await cls.collection().delete_many(filter)
         return result.deleted_count  # type: ignore
 
     @classmethod
@@ -330,8 +329,12 @@ class Document(BaseModel, metaclass=DocumentMetaclass):
         return cls(**result) if result else None
 
     @classmethod
-    async def count_documents(cls, *args: Any, **kwargs: Any) -> int:
+    async def count_documents(
+        cls, filter: Mapping = None, *args: Any, **kwargs: Any
+    ) -> int:
         """Returns the number of documents in this class's collection.
 
         This method is filterable."""
-        return await cls.collection().count_documents(*args, **kwargs)  # type: ignore
+        if filter is None:
+            filter = {}
+        return await cls.collection().count_documents(filter, *args, **kwargs)  # type: ignore
