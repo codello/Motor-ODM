@@ -1,6 +1,9 @@
 name: Build
 on: push
 
+env:
+  target_py_version: 3.8
+
 jobs:
   lint:
     name: Lint Code Style
@@ -10,7 +13,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v1
         with:
-          python-version: 3.x
+          python-version: ${{ env.target_py_version }}
       - name: Install Dependencies
         run: pip install .[dev,typing]
       - name: Run Black
@@ -27,20 +30,25 @@ jobs:
         if: "always()"
 
   test:
-    name: Run Tests
+    name: Run Tests (Python ${{ matrix.python }}, MongoDB ${{ matrix.mongodb }})
     runs-on: ubuntu-latest
+    if: "always()"
+    strategy:
+      matrix:
+        python: ["3.7", "3.8"]
+        mongodb: ["4.0", "4.2"]
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python
         uses: actions/setup-python@v1
         with:
-          python-version: 3.x
+          python-version: ${{ matrix.python }}
       - name: Install Dependencies
         run: pip install .[dev]
       - name: Start MongoDB
         uses: supercharge/mongodb-github-action@1.2.0
         with:
-          mongodb-version: 4.2
+          mongodb-version: ${{ matrix.mongodb }}
       - name: Run Pytest
         run: invoke test --coverage
       - name: Upload Coverage to Codecov
@@ -56,6 +64,7 @@ jobs:
 
   build:
     name: Build Package
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -65,7 +74,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v1
         with:
-          python-version: 3.x
+          python-version: ${{ env.target_py_version }}
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
@@ -89,7 +98,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v1
         with:
-          python-version: 3.x
+          python-version: ${{ env.target_py_version }}
       - name: Install Dependencies
         run: pip install twine
       - name: Get Build Artifacts

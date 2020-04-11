@@ -69,7 +69,7 @@ def lint(c):
 
 
 @task
-def make_docs(c):
+def build_docs(c):
     c: Context
     c.run("cd docs && make html")
 
@@ -78,15 +78,17 @@ def make_docs(c):
 def clean(c):
     c: Context
     files = [
-        ".mypy_cache",
-        ".pytest_cache",
+        "build",
+        "dist",
         "Motor_ODM.egg-info",
         "pip-wheel-metadata",
+        "docs/build",
+        "docs/reference",
+        ".mypy_cache",
+        ".pytest_cache",
         "htmlcov",
         ".coverage",
         "coverage.xml",
-        "docs/reference",
-        "docs/build",
     ]
     args = ["rm", "-rf", *files]
     c.run(" ".join(args))

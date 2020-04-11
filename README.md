@@ -3,8 +3,8 @@
 [![Documentation Status](https://readthedocs.org/projects/motor-odm/badge/?version=latest)](https://motor-odm.readthedocs.io/en/latest/?badge=latest)
 [![Codecov](https://img.shields.io/codecov/c/github/Codello/Motor-ODM)](https://codecov.io/gh/Codello/Motor-ODM)
 [![Requirements Status](https://requires.io/github/Codello/Motor-ODM/requirements.svg?branch=master)](https://requires.io/github/Codello/Motor-ODM/requirements/?branch=master)
-![PyPI - Python Version](https://img.shields.io/pypi/pyversions/Motor-ODM)
-![PyPI](https://img.shields.io/pypi/v/Motor-ODM)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/Motor-ODM)](https://pypi.org/project/Motor-ODM/)
+[![PyPI](https://img.shields.io/pypi/v/Motor-ODM)](https://pypi.org/project/Motor-ODM/)
 
 ![License](https://img.shields.io/github/license/Codello/Motor-ODM)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)

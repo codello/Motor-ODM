@@ -28,6 +28,9 @@ setup(
     zip_safe=False,
     include_package_data=True,
     platforms="any",
+    use_scm_version={
+        "local_scheme": "no-local-version",
+    },  # Support Legacy Installations
     install_requires=["PyMongo", "Motor", "Pydantic"],
     extras_require={
         "docs": list_requirements("docs/requirements.txt"),
@@ -48,7 +51,9 @@ setup(
         "Intended Audience :: Developers",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
-        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3 :: Only",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
         "Topic :: Database",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],

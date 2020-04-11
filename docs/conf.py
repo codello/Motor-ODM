@@ -4,8 +4,7 @@ import os
 import sys
 from datetime import datetime
 
-from setuptools_scm import get_version
-from setuptools_scm.version import ScmVersion, guess_next_dev_version
+from pkg_resources import get_distribution
 
 sys.path.insert(0, os.path.abspath(".."))
 
@@ -15,20 +14,8 @@ project = "Motor-ODM"
 copyright = f"{datetime.now().year}, Kim Wittenburg"
 author = "Kim Wittenburg"
 
-
-def format_version(v: ScmVersion):
-    version_string: str = guess_next_dev_version(v)
-    components = version_string.split(".")
-    return ".".join(components[0:2])
-
-
-version = get_version(
-    root="..",
-    relative_to=__file__,
-    version_scheme=format_version,
-    local_scheme="no-local-version",
-)
-release = get_version(root="..", relative_to=__file__, local_scheme="no-local-version")
+release = get_distribution("motor_odm").version
+version = ".".join(release.split(".")[:2])
 
 # -- General configuration ---------------------------------------------------
 
