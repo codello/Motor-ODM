@@ -15,7 +15,7 @@ jobs:
         with:
           python-version: ${{ env.target_py_version }}
       - name: Install Dependencies
-        run: pip install .[dev,typing]
+        run: pip install .[test,typing]
       - name: Run Black
         run: invoke black --check
         if: "always()"
@@ -44,7 +44,7 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - name: Install Dependencies
-        run: pip install .[dev]
+        run: pip install .[test]
       - name: Start MongoDB
         uses: supercharge/mongodb-github-action@1.2.0
         with:

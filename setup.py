@@ -33,8 +33,8 @@ setup(
     },  # Support Legacy Installations
     install_requires=["PyMongo", "Motor", "Pydantic"],
     extras_require={
-        "docs": list_requirements("docs/requirements.txt"),
-        "dev": [
+        "doc": list_requirements("docs/requirements.txt"),
+        "test": [
             "pytest",
             "pytest-cov",
             "pytest-asyncio",

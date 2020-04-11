@@ -20,14 +20,12 @@ from bson import CodecOptions, ObjectId
 from motor.core import AgnosticCollection, AgnosticDatabase
 from pydantic import BaseModel, Field
 from pydantic.main import ModelMetaclass
-from pymongo import ReadPreference, WriteConcern
+from pymongo import ReadPreference, ReturnDocument, WriteConcern
 from pymongo.read_concern import ReadConcern
-from pymongo.results import InsertManyResult
 
 from motor_odm.helpers import monkey_patch
 
 from .helpers import inherit_class
-from .query import create_query
 
 if TYPE_CHECKING:
     from pydantic.typing import (  # noqa: F401
@@ -35,7 +33,6 @@ if TYPE_CHECKING:
         AbstractSetIntStr,
         DictIntStrAny,
     )
-    from motor_odm.query import Query
 
     GenericDocument = TypeVar("GenericDocument", bound="Document")
     MongoType = Type["MongoBase"]
@@ -114,9 +111,9 @@ class Document(BaseModel, metaclass=DocumentMetaclass):
     """This is the base class for all documents defined using Motor-ODM.
 
     A :class:`Document` is a pydantic model that can be inserted into a MongoDB collection. This class provides an easy
-    interface for interacting with the database. Each document has an :attr:`Document.id` (named ``_id`` in MongoDB) by default by which it can be uniquely
-    identified in the database. The name of this field cannot be customized however you can override it if you don't
-    want to use :class:`ObjectID <bson.objectid.ObjectId>` values for your IDs.
+    interface for interacting with the database. Each document has an :attr:`Document.id` (named ``_id`` in MongoDB) by
+    default by which it can be uniquely identified in the database. The name of this field cannot be customized however
+    you can override it if you don't want to use :class:`ObjectID <bson.objectid.ObjectId>` values for your IDs.
     """
 
     class Config:
@@ -181,82 +178,160 @@ class Document(BaseModel, metaclass=DocumentMetaclass):
             )
         return cls.__collection__
 
-    def document(
+    def mongo(
         self,
         *,
         include: Union["AbstractSetIntStr", "DictIntStrAny"] = None,
         exclude: Union["AbstractSetIntStr", "DictIntStrAny"] = None,
     ) -> "DictStrAny":
         """Converts this object into a dictionary suitable to be saved to MongoDB."""
-        return self.dict(
+        document = self.dict(
             by_alias=True, include=include, exclude=exclude, exclude_defaults=True
         )
+        if self.id is None:
+            document.pop("_id", None)
+        return document
+
+    async def insert(self, *args: Any, **kwargs: Any) -> None:
+        """Inserts the object into the database.
+
+        The object is inserted as a new object.
+        """
+        result = await self.collection().insert_one(self.mongo(), *args, **kwargs)
+        self.id = result.inserted_id
 
     @classmethod
-    async def count(cls, db_filter: "Query" = None, **kwargs: Any) -> int:
-        """Returns the number of documents in this class's collection.
-
-        This method is filterable."""
-        query = create_query(db_filter, **kwargs)
-        return await cls.collection().count_documents(query)  # type: ignore
-
-    @classmethod
-    async def batch_insert(
-        cls: Type["GenericDocument"], *objects: "GenericDocument"
+    async def insert_many(
+        cls: Type["GenericDocument"], *objects: "GenericDocument", **kwargs: Any
     ) -> None:
         """Inserts multiple documents at once.
 
         It is preferred to use this method over multiple :meth:`insert` calls as the performance can be much better.
         """
-        result: InsertManyResult = await cls.collection().insert_many(
-            [obj.document() for obj in objects]
+        result = await cls.collection().insert_many(
+            [obj.mongo() for obj in objects], **kwargs
         )
         for obj, inserted_id in zip(objects, result.inserted_ids):
             obj.id = inserted_id
 
-    @classmethod
-    async def get(
-        cls: Type["GenericDocument"], db_filter: "Query" = None, **kwargs: Any
-    ) -> Optional["GenericDocument"]:
-        """Returns a single document from the collection.
+    async def replace(
+        self: "GenericDocument", replace: "GenericDocument", *args: Any, **kwargs: Any,
+    ) -> "GenericDocument":
+        result = await self.collection().replace_one(
+            self.mongo(), replace.mongo(), *args, **kwargs
+        )
+        if result.upserted_id:
+            replace.id = result.upserted_id
+        elif replace.id is None:
+            replace.id = self.id
+        return replace
 
-        This method is filterable.
-        """
-        query = create_query(db_filter, **kwargs)
-        doc = await cls.collection().find_one(query)
-        return cls(**doc) if doc else None
+    async def update(
+        self, update: "DictStrAny", reload: bool = False, *args: Any, **kwargs: Any
+    ) -> bool:
+        assert self.id is not None
+        result = await self.collection().update_one(
+            {"_id": self.id}, update, *args, **kwargs
+        )
+        if reload:
+            await self.reload()
+        return result.modified_count == 1  # type: ignore
 
-    @classmethod
-    def find(
-        cls: Type["GenericDocument"], db_filter: "Query" = None, **kwargs: Any
-    ) -> AsyncIterator["GenericDocument"]:
-        """Returns multiple documents from the collection.
-
-        This method is filterable.
-        """
-        query = create_query(db_filter, **kwargs)
-
-        async def context() -> AsyncIterator["GenericDocument"]:
-            async for doc in cls.collection().find(query):
-                yield cls(**doc)
-
-        return context()
-
-    all = find
-
-    async def reload(self) -> None:
+    async def reload(self, *args: Any, **kwargs: Any) -> None:
         """Reloads a document from the database.
 
         Use this method if a model might have changed in the database and you need to retrieve the current version. You
         do **not** need to call this after inserting a newly created object into the database.
         """
-        updated = self.__class__(**await self.collection().find_one({"_id": self.id}))
+        assert self.id is not None
+        updated = self.__class__(
+            **await self.collection().find_one({"_id": self.id}, *args, **kwargs)
+        )
         object.__setattr__(self, "__dict__", updated.__dict__)
 
-    async def insert(self) -> None:
-        """Inserts the object into the database.
+    async def delete(self, *args: Any, **kwargs: Any) -> bool:
+        result = await self.collection().delete_one(self.mongo(), *args, **kwargs)
+        return result.deleted_count == 1  # type: ignore
 
-        The object is inserted as a new object.
-        """
-        result = await self.collection().insert_one(self.document())
-        self.id = result.inserted_id
+    @classmethod
+    async def delete_many(
+        cls: Type["GenericDocument"], *objects: "GenericDocument"
+    ) -> int:
+        result = await cls.collection().delete_many([obj.mongo() for obj in objects])
+        return result.deleted_count  # type: ignore
+
+    @classmethod
+    def find(
+        cls: Type["GenericDocument"],
+        filter: "DictStrAny" = None,
+        *args: Any,
+        **kwargs: Any,
+    ) -> AsyncIterator["GenericDocument"]:
+        async def context() -> AsyncIterator["GenericDocument"]:
+            async for doc in cls.collection().find(filter, *args, **kwargs):
+                yield cls(**doc)
+
+        return context()
+
+    @classmethod
+    async def find_one(
+        cls: Type["GenericDocument"],
+        filter: "DictStrAny" = None,
+        *args: Any,
+        **kwargs: Any,
+    ) -> Optional["GenericDocument"]:
+        """Returns a single document from the collection."""
+        doc = await cls.collection().find_one(filter, *args, **kwargs)
+        return cls(**doc) if doc else None
+
+    @classmethod
+    async def find_one_and_delete(
+        cls: Type["GenericDocument"],
+        filter: "DictStrAny" = None,
+        *args: Any,
+        **kwargs: Any,
+    ) -> Optional["GenericDocument"]:
+        result = await cls.collection().find_one_and_delete(filter, *args, **kwargs)
+        return cls(**result) if result else None
+
+    @classmethod
+    async def find_one_and_replace(
+        cls: Type["GenericDocument"],
+        filter: "DictStrAny",
+        replacement: Union["DictStrAny", "GenericDocument"],
+        return_document: bool = ReturnDocument.BEFORE,
+        *args: Any,
+        **kwargs: Any,
+    ) -> Optional["GenericDocument"]:
+        data = replacement.mongo() if isinstance(replacement, Document) else replacement
+        result = await cls.collection().find_one_and_replace(
+            filter, data, return_document=return_document, *args, **kwargs
+        )
+        if result is None:
+            return None
+        instance = cls(**result)
+        if return_document == ReturnDocument.AFTER and isinstance(replacement, cls):
+            object.__setattr__(replacement, "__dict__", instance.__dict__)
+            return replacement
+        else:
+            return instance
+
+    @classmethod
+    async def find_one_and_update(
+        cls: Type["GenericDocument"],
+        filter: "DictStrAny",
+        update: "DictStrAny",
+        *args: Any,
+        **kwargs: Any,
+    ) -> Optional["GenericDocument"]:
+        result = await cls.collection().find_one_and_update(
+            filter, update, *args, **kwargs
+        )
+        return cls(**result) if result else None
+
+    @classmethod
+    async def count_documents(cls, *args: Any, **kwargs: Any) -> int:
+        """Returns the number of documents in this class's collection.
+
+        This method is filterable."""
+        return await cls.collection().count_documents(*args, **kwargs)  # type: ignore

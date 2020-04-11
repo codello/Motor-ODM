@@ -1,10 +1,20 @@
 {
-  "test": [
+  "users": [
     {
-      "name": "Test 1"
+      "name": "John",
+      "admin": true
     },
     {
-      "name": "Test 2"
+      "name": "Peter",
+      "admin": false
+    },
+    {
+      "name": "Mary",
+      "admin": true
+    },
+    {
+      "name": "Jane",
+      "admin": false
     }
   ]
 }
