@@ -1,7 +1,7 @@
 # Motor-ODM
 [![Build](https://github.com/Codello/Motor-ODM/workflows/Build/badge.svg)](https://github.com/Codello/Motor-ODM/actions?query=workflow%3ABuild)
 [![Documentation Status](https://readthedocs.org/projects/motor-odm/badge/?version=latest)](https://motor-odm.readthedocs.io/en/latest/?badge=latest)
-![Codecov](https://img.shields.io/codecov/c/github/Codello/Motor-ODM)
+[![Codecov](https://img.shields.io/codecov/c/github/Codello/Motor-ODM)](https://codecov.io/gh/Codello/Motor-ODM)
 [![Requirements Status](https://requires.io/github/Codello/Motor-ODM/requirements.svg?branch=master)](https://requires.io/github/Codello/Motor-ODM/requirements/?branch=master)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/Motor-ODM)
 ![PyPI](https://img.shields.io/pypi/v/Motor-ODM)

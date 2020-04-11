@@ -10,7 +10,7 @@ def test_create_valid_document():
 
         field: str
 
-    doc = Test(field="")
+    Test(field="")
 
 
 def test_create_document_without_mongo_class():

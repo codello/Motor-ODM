@@ -1,5 +1,3 @@
-import shutil
-
 from invoke import Context, task
 
 
