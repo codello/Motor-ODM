@@ -33,6 +33,7 @@ setup(
         "docs": list_requirements("docs/requirements.txt"),
         "dev": [
             "pytest",
+            "pytest-cov",
             "pytest-asyncio",
             "flake8",
             "isort",

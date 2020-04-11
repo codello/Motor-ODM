@@ -1,10 +1,15 @@
+import shutil
+
 from invoke import Context, task
 
 
 @task
-def test(c):
+def test(c, coverage=False):
     c: Context
-    c.run("pytest")
+    args = ["pytest"]
+    if coverage:
+        args.extend(["--cov", "--cov-report=xml", "--cov-report=html"])
+    c.run(" ".join(args))
 
 
 @task
@@ -69,3 +74,21 @@ def lint(c):
 def make_docs(c):
     c: Context
     c.run("cd docs && make html")
+
+
+@task
+def clean(c):
+    c: Context
+    files = [
+        ".mypy_cache",
+        ".pytest_cache",
+        "Motor_ODM.egg-info",
+        "pip-wheel-metadata",
+        "htmlcov",
+        ".coverage",
+        "coverage.xml",
+        "docs/reference",
+        "docs/build",
+    ]
+    args = ["rm", "-rf", *files]
+    c.run(" ".join(args))

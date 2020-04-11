@@ -1,7 +1,10 @@
 # Motor-ODM
 [![Build](https://github.com/Codello/Motor-ODM/workflows/Build/badge.svg)](https://github.com/Codello/Motor-ODM/actions?query=workflow%3ABuild)
 [![Documentation Status](https://readthedocs.org/projects/motor-odm/badge/?version=latest)](https://motor-odm.readthedocs.io/en/latest/?badge=latest)
+![PyPI](https://img.shields.io/pypi/v/Motor-ODM)
 
+![GitHub](https://img.shields.io/github/license/Codello/Motor-ODM)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 A MongoDB ODM based on Motor and Pydantic.
 

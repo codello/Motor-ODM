@@ -42,7 +42,17 @@ jobs:
         with:
           mongodb-version: 4.2
       - name: Run Pytest
-        run: invoke test
+        run: invoke test --coverage
+      - name: Upload Coverage to Codecov
+        uses: codecov/codecov-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: ./coverage.xml
+      - name: Upload Coverage Artifact
+        uses: actions/upload-artifact@v1
+        with:
+          name: Coverage Report
+          path: htmlcov
 
   build:
     name: Build Package
