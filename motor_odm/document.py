@@ -8,6 +8,7 @@ from typing import (
     Any,
     AsyncIterator,
     Callable,
+    Iterable,
     Iterator,
     Mapping,
     Optional,
@@ -18,16 +19,17 @@ from typing import (
 )
 
 from bson import CodecOptions, ObjectId
-from motor.core import AgnosticCollection, AgnosticDatabase
+from motor.core import AgnosticClientSession, AgnosticCollection, AgnosticDatabase
 from pydantic import BaseModel, Field
 from pydantic.main import ModelMetaclass
-from pymongo import ReadPreference, ReturnDocument, WriteConcern
+from pymongo import IndexModel, ReadPreference, ReturnDocument, WriteConcern
 from pymongo.errors import DuplicateKeyError
 from pymongo.read_concern import ReadConcern
 
 from motor_odm.helpers import monkey_patch
 
 from .helpers import inherit_class
+from .indexes import IndexManager
 
 if TYPE_CHECKING:
     from pydantic.typing import (  # noqa: F401
@@ -37,9 +39,9 @@ if TYPE_CHECKING:
     )
 
     GenericDocument = TypeVar("GenericDocument", bound="Document")
-    MongoType = Type["MongoBase"]
+    MongoType = Type["Mongo"]
 
-__all__ = ["DocumentMetaclass", "Document"]
+__all__ = ["Document", "Mongo"]
 
 
 @monkey_patch(ObjectId)
@@ -62,7 +64,7 @@ def __get_validators__() -> Iterator[Callable[[Any], ObjectId]]:
     yield validate
 
 
-class MongoBase:
+class Mongo:
     """This class defines the defaults for collection configurations.
 
     Each collection (defined by a subclass of :class:`Document`) can override these using an inner class named
@@ -73,7 +75,13 @@ class MongoBase:
     """The name of the collection for a document. This attribute is required."""
 
     abstract: bool = False
-    """Whether the document is abstract."""
+    """Whether the document is abstract.
+
+    The value for this field cannot be specified in the ``Mongo`` class but as a keyword argument on class creation.
+    """
+
+    indexes: Iterable[IndexModel] = []
+    """A list of indexes to create for the collection."""
 
     codec_options: Optional[CodecOptions] = None
     """The codec options to use when accessing the collection. Defaults to the database's :attr:`codec_options`."""
@@ -99,7 +107,8 @@ class DocumentMetaclass(ModelMetaclass):
         abstract: bool = False,
         **kwargs: Any,
     ) -> "DocumentMetaclass":
-        mongo: MongoType = MongoBase
+        mcs.validate(name, bases, namespace, abstract)
+        mongo: MongoType = Mongo
         for base in reversed(bases):
             if base != BaseModel and base != Document and issubclass(base, Document):
                 # noinspection PyTypeChecker
@@ -108,12 +117,24 @@ class DocumentMetaclass(ModelMetaclass):
         mongo = inherit_class("Mongo", namespace.get("Mongo"), mongo)
         mongo.abstract = abstract
 
-        if abstract and hasattr(mongo, "collection"):
-            raise TypeError(f"{name} is abstract and may not define a collection.")
-        elif not abstract and not hasattr(mongo, "collection"):
-            raise TypeError(f"{name} is not abstract and does not define a collection.")
+        return super().__new__(  # type: ignore
+            mcs, name, bases, {"__mongo__": mongo, **namespace}, **kwargs
+        )
 
-        return super().__new__(mcs, name, bases, {"__mongo__": mongo, **namespace}, **kwargs)  # type: ignore
+    @classmethod
+    def validate(
+        mcs, name: str, bases: Sequence[type], namespace: "DictStrAny", abstract: bool
+    ) -> None:
+        if "Mongo" in namespace:
+            mongo = namespace["Mongo"]
+        else:
+            mongo = object()
+        if hasattr(mongo, "abstract"):
+            raise TypeError(
+                "Cannot specify `abstract` in Mongo class. Use a keyword argument on the class instead."
+            )
+        if not abstract and not hasattr(mongo, "collection"):
+            raise TypeError(f"{name} is not abstract and does not define a collection.")
 
 
 class Document(BaseModel, metaclass=DocumentMetaclass, abstract=True):
@@ -199,6 +220,27 @@ class Document(BaseModel, metaclass=DocumentMetaclass, abstract=True):
                 read_concern=meta.read_concern,
             )
         return cls.__collection__
+
+    @classmethod
+    async def init_indexes(
+        cls, drop: bool = True, session: AgnosticClientSession = None, **kwargs: Any
+    ) -> None:
+        """Creates the indexes for this collection of documents.
+
+        The indexes are specified in the ``indexes`` field of the ``Mongo`` class. By
+        default this method makes sure that after the coroutine completes the
+        collection's indexes equal the specified indexes. If you do not want to drop
+        existing indexes you can specify ``drop=True`` as keyword argument. Note however
+        that this method will always override existing indexes.
+
+        :param drop: If ``True`` all indexes not specified by this collection will be
+                     dropped. Default is ``True``.
+        :param session: A session to use for any database actions.
+        :param kwargs: Any keyword arguments are passed to the DB calls. This may be
+                       used to specify timeouts etc.
+        """
+        im = IndexManager(cls.collection(), session, **kwargs)
+        await im.ensure_indexes(cls.__mongo__.indexes, drop=drop)
 
     def mongo(
         self,
@@ -358,4 +400,6 @@ class Document(BaseModel, metaclass=DocumentMetaclass, abstract=True):
         This method is filterable."""
         if filter is None:
             filter = {}
-        return await cls.collection().count_documents(filter, *args, **kwargs)  # type: ignore
+        return await cls.collection().count_documents(  # type: ignore
+            filter, *args, **kwargs
+        )

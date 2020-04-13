@@ -28,6 +28,16 @@ def test_abstract_document():
         Abstract()
 
 
+def test_abstract_in_mongo():
+    with pytest.raises(TypeError):
+
+        class Abstract(Document):
+            class Mongo:
+                abstract = True
+
+            field: str
+
+
 def test_abstract_document_with_collection():
     with pytest.raises(TypeError):
 
