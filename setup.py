@@ -43,6 +43,7 @@ setup(
             "flake8-black",
             "mypy",
             "invoke",
+            "fastapi",
         ],
         "typing": ["fastapi"],
     },
