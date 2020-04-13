@@ -21,10 +21,10 @@ def q(*args: Any, **kwargs: Any) -> "Query":
     >>> q(123)
     {'_id': 123}
 
-    If you pass ``None`` as the single id value, a query will be constructed that (most
-    likely) will match nothing.
+    If you pass ``None`` as the single id value, a query will be constructed that
+    matches nothing.
     >>> q(None)
-    {'_id': nan}
+    {'X': {'$in': []}}
 
     You can also create a query that matches an ID in a list of IDs by specifying
     multiple positional arguments, each of which will be treated as a possible ID. In
