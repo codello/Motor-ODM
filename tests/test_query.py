@@ -127,3 +127,15 @@ def test_comment(query):
         "age": {"$gt": 20, "$lt": 100},
         "$comment": "A Comment",
     }
+
+
+def test_and():
+    assert q(age=20) & q(name="Name") == {"$and": [{"age": 20}, {"name": "Name"}]}
+
+
+def test_or():
+    assert q(age=20) | q(name="Name") == {"$or": [{"age": 20}, {"name": "Name"}]}
+
+
+def test_nor():
+    assert q(age=20) ^ q(name="Name") == {"$nor": [{"age": 20}, {"name": "Name"}]}
