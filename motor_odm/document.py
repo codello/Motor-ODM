@@ -72,6 +72,9 @@ class MongoBase:
     collection: Optional[str]
     """The name of the collection for a document. This attribute is required."""
 
+    abstract: bool = False
+    """Whether the document is abstract."""
+
     codec_options: Optional[CodecOptions] = None
     """The codec options to use when accessing the collection. Defaults to the database's :attr:`codec_options`."""
 
@@ -89,7 +92,12 @@ class DocumentMetaclass(ModelMetaclass):
     """The meta class for :class:`Document`. Ensures that the ``Mongo`` class is automatically inherited."""
 
     def __new__(
-        mcs, name: str, bases: Sequence[type], namespace: "DictStrAny", **kwargs: Any
+        mcs,
+        name: str,
+        bases: Sequence[type],
+        namespace: "DictStrAny",
+        abstract: bool = False,
+        **kwargs: Any,
     ) -> "DocumentMetaclass":
         mongo: MongoType = MongoBase
         for base in reversed(bases):
@@ -98,24 +106,27 @@ class DocumentMetaclass(ModelMetaclass):
                 mongo = inherit_class("Mongo", base.__mongo__, mongo)
         # noinspection PyTypeChecker
         mongo = inherit_class("Mongo", namespace.get("Mongo"), mongo)
+        mongo.abstract = abstract
 
-        if (namespace.get("__module__"), namespace.get("__qualname__")) != (
-            "motor_odm.document",
-            "Document",
-        ):
-            if not hasattr(mongo, "collection"):
-                raise TypeError(f"{name} does not define a collection.")
+        if abstract and hasattr(mongo, "collection"):
+            raise TypeError(f"{name} is abstract and may not define a collection.")
+        elif not abstract and not hasattr(mongo, "collection"):
+            raise TypeError(f"{name} is not abstract and does not define a collection.")
 
         return super().__new__(mcs, name, bases, {"__mongo__": mongo, **namespace}, **kwargs)  # type: ignore
 
 
-class Document(BaseModel, metaclass=DocumentMetaclass):
+class Document(BaseModel, metaclass=DocumentMetaclass, abstract=True):
     """This is the base class for all documents defined using Motor-ODM.
 
     A :class:`Document` is a pydantic model that can be inserted into a MongoDB collection. This class provides an easy
     interface for interacting with the database. Each document has an :attr:`Document.id` (named ``_id`` in MongoDB) by
     default by which it can be uniquely identified in the database. The name of this field cannot be customized however
     you can override it if you don't want to use :class:`ObjectID <bson.objectid.ObjectId>` values for your IDs.
+
+    :param abstract: Mark subclasses as ``abstract`` in order to create an abstract document. An abstract document
+                    cannot be instantiated but can be subclassed. This enables you to extract common functionality from
+                    multiple documents into a common abstract super-document.
     """
 
     class Config:
@@ -139,6 +150,15 @@ class Document(BaseModel, metaclass=DocumentMetaclass):
     own ID types. Note that if you intend to override this field you **must** set its alias to ``_id`` in order for your
     IDs to be recognized as such by MongoDB.
     """
+
+    # noinspection PyMethodParameters
+    def __init__(__pydantic_self__, **data: Any) -> None:
+        # Uses something other than `self` the first arg to allow "self" as a settable attribute
+        if __pydantic_self__.__mongo__.abstract:
+            raise TypeError(
+                f"Cannot instanciate abstract document {__pydantic_self__.__class__.__name__}"
+            )
+        super().__init__(**data)
 
     @classmethod
     def use(cls: Type["Document"], db: AgnosticDatabase) -> None:
@@ -255,8 +275,9 @@ class Document(BaseModel, metaclass=DocumentMetaclass):
     async def delete_many(
         cls: Type["GenericDocument"], *objects: "GenericDocument"
     ) -> int:
-        filter = {"_id": {"$in": [obj.id for obj in objects]}}
-        result = await cls.collection().delete_many(filter)
+        result = await cls.collection().delete_many(
+            {"_id": {"$in": [obj.id for obj in objects]}}
+        )
         return result.deleted_count  # type: ignore
 
     @classmethod
