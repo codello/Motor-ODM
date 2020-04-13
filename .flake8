@@ -2,5 +2,5 @@
 exclude = .git, __pycache__, venv
 max-line-length = 80
 max-complexity = 18
-select = C,E,F,W,B,B950
+select = BLK,I,C,E,F,W,B,B950
 ignore = E203, E501, W503

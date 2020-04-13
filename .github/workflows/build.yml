@@ -16,18 +16,15 @@ jobs:
           python-version: ${{ env.target_py_version }}
       - name: Install Dependencies
         run: pip install .[test,typing]
-      - name: Run Black
-        run: invoke black --check
+      - name: Run flake8
         if: "always()"
-      - name: Run Flake8
-        run: invoke flake8
-        if: "always()"
-      - name: Run isort
-        run: invoke isort --check
-        if: "always()"
+        uses: TrueBrain/actions-flake8@master
       - name: Run MyPy
-        run: invoke mypy
         if: "always()"
+        uses: kolonialno/mypy-action@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          paths: motor_odm
 
   test:
     name: Run Tests (Python ${{ matrix.python }}, MongoDB ${{ matrix.mongodb }})
