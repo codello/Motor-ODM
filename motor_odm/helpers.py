@@ -6,7 +6,16 @@ of dependencies.
 import inspect
 from inspect import isclass, ismodule
 from types import ModuleType
-from typing import TYPE_CHECKING, Any, Callable, Optional, Tuple, TypeVar, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Iterable,
+    Optional,
+    Tuple,
+    TypeVar,
+    Union,
+)
 
 if TYPE_CHECKING:
     T = TypeVar("T", bound=type)
@@ -14,7 +23,9 @@ if TYPE_CHECKING:
     D = TypeVar("D", bound=Union[object, Callable[[Any], Any]])
 
 
-def inherit_class(name: str, self: Optional["T"], *parents: "T") -> "T":
+def inherit_class(
+    name: str, self: Optional["T"], parent: "T", merge: Iterable[str] = None
+) -> "T":
     """
     Performs a pseudo-inheritance by creating a new class that inherits from ``self`` and ``parents``. This is useful to
     support intuitive inheritance on inner classes (typically named ``Meta``).
@@ -23,17 +34,46 @@ def inherit_class(name: str, self: Optional["T"], *parents: "T") -> "T":
 
     :param name: The name of the newly created type.
     :param self: The primary base class (fields in this class take preference over the ``parents``' fields.
-    :param parents: The secondary base classes. Field preferences are determined by the order of the parent classes.
+    :param parent: The secondary base class (a pseudo-parent of ``self``).
+    :param merge: A list of fields that should not be replaces during inheritance but
+                  merged. This only works for some types.
     :return: A new type inheriting from ``self`` and ``parents``.
     """
-    base_classes: Tuple["T", ...]
+    base_classes: Tuple[type, ...]
     if not self:
-        base_classes = parents
-    elif self == parents[0]:
-        base_classes = (self, *parents[1:])
+        base_classes = (parent,)
+    elif self == parent:
+        base_classes = (self,)
     else:
-        base_classes = self, *parents
-    return type(name, base_classes, {})  # type: ignore
+        base_classes = self, parent
+    clazz = type(name, base_classes, {})
+    if merge is None:
+        merge = {}
+    for key in merge:
+        if hasattr(self, key) and hasattr(parent, key):
+            value1 = getattr(parent, key)
+            value2 = getattr(self, key)
+            setattr(clazz, key, merge_values(value1, value2))
+    return clazz  # type: ignore
+
+
+def merge_values(value1: Any, value2: Any) -> Any:
+    copy: Any
+    if isinstance(value1, list):
+        copy = value1.copy()
+        copy.extend(value2)
+    elif isinstance(value1, dict):
+        copy = value1.copy()
+        copy.update(value2)
+    elif isinstance(value1, set):
+        copy = value1.copy()
+        copy.update(value2)
+    else:
+        raise ValueError(
+            f"Cannot merge value of type {type(value2)} "
+            f"into value of type {type(value1)}"
+        )
+    return copy
 
 
 def monkey_patch(
