@@ -89,25 +89,25 @@ class Mongo:
 
     codec_options: Optional[CodecOptions] = None
     """The codec options to use when accessing the collection.
-    
+
     Defaults to the database's :attr:`codec_options`.
     """
 
     read_preference: Optional[ReadPreference] = None
     """The read preference to use when accessing the collection.
-    
+
     Defaults to the database's :attr:`read_preference`.
     """
 
     write_concern: Optional[WriteConcern] = None
     """The write concern to use when accessing the collection.
-    
+
     Defaults to the database's :attr:`write_concern`.
     """
 
     read_concern: Optional[ReadConcern] = None
     """The read concern to use when accessing the collection.
-    
+
     Defaults to the database's :attr:`read_concern`.
     """
 
@@ -333,7 +333,7 @@ class Document(BaseModel, metaclass=DocumentMetaclass, abstract=True):
             self.id = result.upserted_id
             return True
         else:
-            return result.modified_count == 1
+            return result.modified_count == 1  # type: ignore
 
     async def reload(self, *args: Any, **kwargs: Any) -> bool:
         """Reloads a document from the database.

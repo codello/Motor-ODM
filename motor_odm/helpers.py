@@ -12,7 +12,7 @@ from typing import (
     Callable,
     Iterable,
     Optional,
-    Tuple,
+    Sequence,
     TypeVar,
     Union,
 )
@@ -42,7 +42,7 @@ def inherit_class(
                   merged. This only works for some types.
     :return: A new type inheriting from ``self`` and ``parents``.
     """
-    base_classes: Tuple["T", ...]
+    base_classes: Sequence["T"]
     if not self:
         base_classes = (parent,)
     elif self == parent:

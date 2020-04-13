@@ -1,4 +1,3 @@
-import math
 from typing import TYPE_CHECKING, Any, Dict, Optional, Union
 
 from bson import Code

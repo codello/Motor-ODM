@@ -1,5 +1,3 @@
-import math
-
 import pytest
 
 from motor_odm import Query, q
