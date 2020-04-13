@@ -1,7 +1,7 @@
 """
-This module contains various supporting functions that can be used independently of the Motor-ODM framework. Some of
-these utilities can be found in similar form in other packages or frameworks and are adapted here to reduce the number
-of dependencies.
+This module contains various supporting functions that can be used independently of the
+Motor-ODM framework. Some of these utilities can be found in similar form in other
+packages or frameworks and are adapted here to reduce the number of dependencies.
 """
 import inspect
 from inspect import isclass, ismodule
@@ -12,7 +12,7 @@ from typing import (
     Callable,
     Iterable,
     Optional,
-    Tuple,
+    Sequence,
     TypeVar,
     Union,
 )
@@ -27,19 +27,22 @@ def inherit_class(
     name: str, self: Optional["T"], parent: "T", merge: Iterable[str] = None
 ) -> "T":
     """
-    Performs a pseudo-inheritance by creating a new class that inherits from ``self`` and ``parents``. This is useful to
-    support intuitive inheritance on inner classes (typically named ``Meta``).
+    Performs a pseudo-inheritance by creating a new class that inherits from ``self``
+    and ``parents``. This is useful to support intuitive inheritance on inner classes
+    (typically named ``Meta``).
 
-    Note that this method neither returns ``self`` nor any of the ``parents`` but a new type that inherits from both.
+    Note that this method neither returns ``self`` nor any of the ``parents`` but a new
+    type that inherits from both.
 
     :param name: The name of the newly created type.
-    :param self: The primary base class (fields in this class take preference over the ``parents``' fields.
+    :param self: The primary base class (fields in this class take preference over the
+                 ``parents``' fields.
     :param parent: The secondary base class (a pseudo-parent of ``self``).
     :param merge: A list of fields that should not be replaces during inheritance but
                   merged. This only works for some types.
     :return: A new type inheriting from ``self`` and ``parents``.
     """
-    base_classes: Tuple[type, ...]
+    base_classes: Sequence["T"]
     if not self:
         base_classes = (parent,)
     elif self == parent:
@@ -58,6 +61,15 @@ def inherit_class(
 
 
 def merge_values(value1: Any, value2: Any) -> Any:
+    """Merges two values.
+
+    This method works only for specific collection types (namely lists, dicts and sets).
+    For other values a :exc:`ValueError` is raised.
+
+    The type of the resulting value is determined by the type of ``value2``, however
+    ``value1`` may override some of the contents in ``value2`` (e.g. replace values for
+    dict keys).
+    """
     copy: Any
     if isinstance(value1, list):
         copy = value1.copy()
@@ -80,12 +92,13 @@ def monkey_patch(
     cls: Union[type, ModuleType], name: Optional[str] = None
 ) -> Callable[["C"], "C"]:
     """
-    Monkey patches class or module by adding to it decorated function. Anything overwritten can be accessed via a
-    ``.original`` attribute of the decorated object.
+    Monkey patches class or module by adding to it decorated function. Anything
+    overwritten can be accessed via a ``.original`` attribute of the decorated object.
 
     :param cls: The class or module to be patched.
     :param name: The name of the attribute to be patched.
-    :return: A decorator that monkey patches ``cls.name`` and returns the decorated function.
+    :return: A decorator that monkey patches ``cls.name`` and returns the decorated
+             function.
     """
     assert isclass(cls) or ismodule(
         cls

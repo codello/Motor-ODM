@@ -1,6 +1,7 @@
 """
-This module contains the base class for interacting with Motor-ODM: :class:`Document`. The :class:`Document` class is
-the main entry point to Motor-ODM and provides its main interface.
+This module contains the base class for interacting with Motor-ODM: :class:`Document`.
+The :class:`Document` class is the main entry point to Motor-ODM and provides its main
+interface.
 """
 
 from typing import (
@@ -30,6 +31,7 @@ from motor_odm.helpers import monkey_patch
 
 from .helpers import inherit_class
 from .indexes import IndexManager
+from .query import q
 
 if TYPE_CHECKING:
     from pydantic.typing import (  # noqa: F401
@@ -67,8 +69,9 @@ def __get_validators__() -> Iterator[Callable[[Any], ObjectId]]:
 class Mongo:
     """This class defines the defaults for collection configurations.
 
-    Each collection (defined by a subclass of :class:`Document`) can override these using an inner class named
-    ``Mongo``. Attributes are implicitly and transitively inherited from the Mongo classes of base classes.
+    Each collection (defined by a subclass of :class:`Document`) can override these
+    using an inner class named ``Mongo``. Attributes are implicitly and transitively
+    inherited from the Mongo classes of base classes.
     """
 
     collection: Optional[str]
@@ -77,27 +80,43 @@ class Mongo:
     abstract: bool = False
     """Whether the document is abstract.
 
-    The value for this field cannot be specified in the ``Mongo`` class but as a keyword argument on class creation.
+    The value for this field cannot be specified in the ``Mongo`` class but as a keyword
+    argument on class creation.
     """
 
     indexes: List[IndexModel] = []
     """A list of indexes to create for the collection."""
 
     codec_options: Optional[CodecOptions] = None
-    """The codec options to use when accessing the collection. Defaults to the database's :attr:`codec_options`."""
+    """The codec options to use when accessing the collection.
+
+    Defaults to the database's :attr:`codec_options`.
+    """
 
     read_preference: Optional[ReadPreference] = None
-    """The read preference to use when accessing the collection. Defaults to the database's :attr:`read_preference`."""
+    """The read preference to use when accessing the collection.
+
+    Defaults to the database's :attr:`read_preference`.
+    """
 
     write_concern: Optional[WriteConcern] = None
-    """The write concern to use when accessing the collection. Defaults to the database's :attr:`write_concern`."""
+    """The write concern to use when accessing the collection.
+
+    Defaults to the database's :attr:`write_concern`.
+    """
 
     read_concern: Optional[ReadConcern] = None
-    """The read concern to use when accessing the collection. Defaults to the database's :attr:`read_concern`."""
+    """The read concern to use when accessing the collection.
+
+    Defaults to the database's :attr:`read_concern`.
+    """
 
 
 class DocumentMetaclass(ModelMetaclass):
-    """The meta class for :class:`Document`. Ensures that the ``Mongo`` class is automatically inherited."""
+    """The meta class for :class:`Document`.
+
+    Its task is mainly to ensure that the ``Mongo`` class is automatically inherited.
+    """
 
     def __new__(
         mcs,
@@ -134,7 +153,8 @@ class DocumentMetaclass(ModelMetaclass):
             mongo = object()
         if hasattr(mongo, "abstract"):
             raise TypeError(
-                "Cannot specify `abstract` in Mongo class. Use a keyword argument on the class instead."
+                "Cannot specify `abstract` in Mongo class. Use a keyword argument on "
+                "the class instead."
             )
         if not abstract and not hasattr(mongo, "collection"):
             raise TypeError(f"{name} is not abstract and does not define a collection.")
@@ -143,14 +163,17 @@ class DocumentMetaclass(ModelMetaclass):
 class Document(BaseModel, metaclass=DocumentMetaclass, abstract=True):
     """This is the base class for all documents defined using Motor-ODM.
 
-    A :class:`Document` is a pydantic model that can be inserted into a MongoDB collection. This class provides an easy
-    interface for interacting with the database. Each document has an :attr:`Document.id` (named ``_id`` in MongoDB) by
-    default by which it can be uniquely identified in the database. The name of this field cannot be customized however
-    you can override it if you don't want to use :class:`ObjectID <bson.objectid.ObjectId>` values for your IDs.
+    A :class:`Document` is a pydantic model that can be inserted into a MongoDB
+    collection. This class provides an easy interface for interacting with the database.
+    Each document has an :attr:`Document.id` (named ``_id`` in MongoDB) by default by
+    which it can be uniquely identified in the database. The name of this field cannot
+    be customized however you can override it if you don't want to use :class:`ObjectID
+    <bson.objectid.ObjectId>` values for your IDs.
 
-    :param abstract: Mark subclasses as ``abstract`` in order to create an abstract document. An abstract document
-                    cannot be instantiated but can be subclassed. This enables you to extract common functionality from
-                    multiple documents into a common abstract super-document.
+    :param abstract: Mark subclasses as ``abstract`` in order to create an abstract
+                     document. An abstract document cannot be instantiated but can be
+                     subclassed. This enables you to extract common functionality from
+                     multiple documents into a common abstract super-document.
     """
 
     class Config:
@@ -170,14 +193,16 @@ class Document(BaseModel, metaclass=DocumentMetaclass, abstract=True):
     id: ObjectId = Field(None, alias="_id")
     """The document's ID in the database.
 
-    By default this field is of type :class:`ObjectId <bson.objectid.ObjectId>` but it can be overridden to supply your
-    own ID types. Note that if you intend to override this field you **must** set its alias to ``_id`` in order for your
-    IDs to be recognized as such by MongoDB.
+    By default this field is of type :class:`ObjectId <bson.objectid.ObjectId>` but it
+    can be overridden to supply your own ID types. Note that if you intend to override
+    this field you **must** set its alias to ``_id`` in order for your IDs to be
+    recognized as such by MongoDB.
     """
 
     # noinspection PyMethodParameters
     def __init__(__pydantic_self__, **data: Any) -> None:
-        # Uses something other than `self` the first arg to allow "self" as a settable attribute
+        # Uses something other than `self` the first arg to allow "self" as a settable
+        # attribute
         if __pydantic_self__.__mongo__.abstract:
             raise TypeError(
                 f"Cannot instantiate abstract document {__pydantic_self__.__class__.__name__}"
@@ -188,9 +213,9 @@ class Document(BaseModel, metaclass=DocumentMetaclass, abstract=True):
     def use(cls: Type["Document"], db: AgnosticDatabase) -> None:
         """Sets the database to be used by this :class:`Document`.
 
-        The database will also be used by subclasses of this class unless they :meth:`use` their own database.
-
-        This method has to be invoked before the ODM class can be used.
+        The database will also be used by subclasses of this class unless they
+        :meth:`use` their own database. This method has to be invoked before the ODM
+        class can be used.
         """
         assert db is not None
         cls.__db__ = db
@@ -199,8 +224,9 @@ class Document(BaseModel, metaclass=DocumentMetaclass, abstract=True):
     def db(cls) -> AgnosticDatabase:
         """Returns the database that is currently associated with this document.
 
-        If no such database exists this returns the database of the parent document (its superclass). If no
-        :class:`Document` class had its :meth:`use` method called to set a db, an :class:`AttributeError` is raised.
+        If no such database exists this returns the database of the parent document (its
+        superclass). If no :class:`Document` class had its :meth:`use` method called to
+        set a db, an :class:`AttributeError` is raised.
         """
         if not hasattr(cls, "__db__"):
             raise AttributeError("Accessing database without using it first.")
@@ -210,8 +236,8 @@ class Document(BaseModel, metaclass=DocumentMetaclass, abstract=True):
     def collection(cls: Type["Document"]) -> AgnosticCollection:
         """Returns the collection for this :class:`Document`.
 
-        The collection uses the ``codec_options``, ``read_preference``, ``write_concern`` and ``read_concern`` from the
-        document's ```Mongo``` class.
+        The collection uses the ``codec_options``, ``read_preference``,
+        ``write_concern`` and ``read_concern`` from the document's ```Mongo``` class.
         """
         meta = cls.__mongo__
         if cls.__collection__ is None or cls.__collection__.database is not cls.db():
@@ -262,7 +288,9 @@ class Document(BaseModel, metaclass=DocumentMetaclass, abstract=True):
     async def insert(self, *args: Any, **kwargs: Any) -> bool:
         """Inserts the object into the database.
 
-        The object is inserted as a new object.
+        The object is inserted as a new object. If the document already exists this
+        method will raise an error. Use :meth:`save` instead if you want to update an
+        existing value.
         """
         try:
             result = await self.collection().insert_one(self.mongo(), *args, **kwargs)
@@ -277,7 +305,8 @@ class Document(BaseModel, metaclass=DocumentMetaclass, abstract=True):
     ) -> None:
         """Inserts multiple documents at once.
 
-        It is preferred to use this method over multiple :meth:`insert` calls as the performance can be much better.
+        It is preferred to use this method over multiple :meth:`insert` calls as the
+        performance can be much better.
         """
         result = await cls.collection().insert_many(
             [obj.mongo() for obj in objects], **kwargs
@@ -285,24 +314,33 @@ class Document(BaseModel, metaclass=DocumentMetaclass, abstract=True):
         for obj, inserted_id in zip(objects, result.inserted_ids):
             obj.id = inserted_id
 
-    async def save(self, *args: Any, **kwargs: Any,) -> bool:
-        assert self.id is not None
-        result = await self.collection().replace_one(
-            {"_id": self.id}, self.mongo(), *args, **kwargs
-        )
-        return result.modified_count == 1  # type: ignore
+    async def save(self, upsert: bool = True, *args: Any, **kwargs: Any,) -> bool:
+        """Saves this instance to the database.
 
-    async def upsert(self, *args: Any, **kwargs: Any) -> bool:
-        if self.id is None:
-            return await self.insert(*args, **kwargs)
+        By default this method creates the document in the database if it doesn't exist.
+        If you don't want this behavior you can pass ``upsert=False``.
+
+        Any ``args`` and ``kwargs`` are passed to motor's ``replace_one`` method.
+
+        :param upsert: Whether to create the document if it doesn't exist.
+        :returns: ``True`` if the document was inserted/updated, ``False`` if nothing
+                  changed. This may also indicate that the document was not changed.
+        """
+        result = await self.collection().replace_one(
+            q(self.id), self.mongo(), upsert=upsert, *args, **kwargs
+        )
+        if result.upserted_id is not None:
+            self.id = result.upserted_id
+            return True
         else:
-            return await self.save(*args, **kwargs)
+            return result.modified_count == 1  # type: ignore
 
     async def reload(self, *args: Any, **kwargs: Any) -> bool:
         """Reloads a document from the database.
 
-        Use this method if a model might have changed in the database and you need to retrieve the current version. You
-        do **not** need to call this after inserting a newly created object into the database.
+        Use this method if a model might have changed in the database and you need to
+        retrieve the current version. You do **not** need to call this after inserting a
+        newly created object into the database.
         """
         assert self.id is not None
         result = await self.collection().find_one({"_id": self.id}, *args, **kwargs)
@@ -313,6 +351,13 @@ class Document(BaseModel, metaclass=DocumentMetaclass, abstract=True):
         return True
 
     async def delete(self, *args: Any, **kwargs: Any) -> bool:
+        """Deletes the document from the database.
+
+        This method does not modify the instance in any way. ``args`` and ``kwargs``
+        are passed to motor's ``delete_one`` method.
+
+        :returns: ``True`` if the document was deleted.
+        """
         result = await self.collection().delete_one(self.mongo(), *args, **kwargs)
         return result.deleted_count == 1  # type: ignore
 
@@ -320,8 +365,13 @@ class Document(BaseModel, metaclass=DocumentMetaclass, abstract=True):
     async def delete_many(
         cls: Type["GenericDocument"], *objects: "GenericDocument"
     ) -> int:
+        """Deletes all specified objects.
+
+        :param objects: All objects to be deleted.
+        :returns: The number of documents deleted.
+        """
         result = await cls.collection().delete_many(
-            {"_id": {"$in": [obj.id for obj in objects]}}
+            q(_id__in=[obj.id for obj in objects])
         )
         return result.deleted_count  # type: ignore
 
@@ -332,6 +382,11 @@ class Document(BaseModel, metaclass=DocumentMetaclass, abstract=True):
         *args: Any,
         **kwargs: Any,
     ) -> AsyncIterator["GenericDocument"]:
+        """Returns an iterable over a cursor returning documents matching ``filter``.
+
+        ``args`` and ``kwargs`` are passed to motor's ``find`` method.
+        """
+
         async def context() -> AsyncIterator["GenericDocument"]:
             async for doc in cls.collection().find(filter, *args, **kwargs):
                 yield cls(**doc)
@@ -356,6 +411,11 @@ class Document(BaseModel, metaclass=DocumentMetaclass, abstract=True):
         *args: Any,
         **kwargs: Any,
     ) -> Optional["GenericDocument"]:
+        """Finds a document and deletes it.
+
+        This method works exactly like pymongo's find_one_and_delete except that this
+        returns a :class:`Document` instance.
+        """
         result = await cls.collection().find_one_and_delete(filter, *args, **kwargs)
         return cls(**result) if result else None
 
@@ -368,6 +428,13 @@ class Document(BaseModel, metaclass=DocumentMetaclass, abstract=True):
         *args: Any,
         **kwargs: Any,
     ) -> Optional["GenericDocument"]:
+        """Finds a document and replaces it.
+
+        This method works exactly like pymongo's find_one_and_replace except that this
+        returns a :class:`Document` instance. Note that if you specify
+        ``return_document=ReturnDocument.AFTER`` this method will reload the
+        ``replacement`` document.
+        """
         data = replacement.mongo() if isinstance(replacement, Document) else replacement
         result = await cls.collection().find_one_and_replace(
             filter, data, return_document=return_document, *args, **kwargs
@@ -389,6 +456,11 @@ class Document(BaseModel, metaclass=DocumentMetaclass, abstract=True):
         *args: Any,
         **kwargs: Any,
     ) -> Optional["GenericDocument"]:
+        """Finds a document and updates it.
+
+        This method works exactly like pymongo's find_one_and_update except that this
+        returns a :class:`Document` instance.
+        """
         result = await cls.collection().find_one_and_update(
             filter, update, *args, **kwargs
         )

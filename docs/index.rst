@@ -26,6 +26,7 @@ to start.
    :nosignatures:
 
    motor_odm.document.Document
+   motor_odm.query.q
 
 
 .. toctree::

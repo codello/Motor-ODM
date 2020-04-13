@@ -1,5 +1,3 @@
-import math
-
 import pytest
 
 from motor_odm import Query, q
@@ -22,7 +20,7 @@ def test_single_id(id):
 
 
 def test_none_id():
-    assert q(None) == {"_id": math.nan}
+    assert q(None) == {"X": {"$in": []}}
 
 
 def test_multi_id():
