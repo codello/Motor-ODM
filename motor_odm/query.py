@@ -156,7 +156,7 @@ class Query(Dict[str, Any]):
         ``op`` is specified it is used instead of the default ``$eq`` operator.
 
         :raises KeyError: If ``field`` has already a value for ``op`` that is not equal
-        to ``value``.
+                          to ``value``.
         """
         if field not in self and op is None:
             self[field] = value

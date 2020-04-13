@@ -311,7 +311,7 @@ class Document(BaseModel, metaclass=DocumentMetaclass, abstract=True):
         for obj, inserted_id in zip(objects, result.inserted_ids):
             obj.id = inserted_id
 
-    async def save(self, *args: Any, **kwargs: Any,) -> bool:
+    async def save(self, upsert: bool = True, *args: Any, **kwargs: Any,) -> bool:
         assert self.id is not None
         result = await self.collection().replace_one(
             {"_id": self.id}, self.mongo(), *args, **kwargs
@@ -340,6 +340,13 @@ class Document(BaseModel, metaclass=DocumentMetaclass, abstract=True):
         return True
 
     async def delete(self, *args: Any, **kwargs: Any) -> bool:
+        """Deletes the document from the database.
+
+        This method does not modify the instance in any way. ``args`` and ``kwargs``
+        are passed to motor's ``delete_one`` method.
+
+        :returns: ``True`` if the document was deleted.
+        """
         result = await self.collection().delete_one(self.mongo(), *args, **kwargs)
         return result.deleted_count == 1  # type: ignore
 
@@ -347,6 +354,11 @@ class Document(BaseModel, metaclass=DocumentMetaclass, abstract=True):
     async def delete_many(
         cls: Type["GenericDocument"], *objects: "GenericDocument"
     ) -> int:
+        """Deletes all specified objects.
+
+        :param objects: All objects to be deleted.
+        :returns: The number of documents deleted.
+        """
         result = await cls.collection().delete_many(
             {"_id": {"$in": [obj.id for obj in objects]}}
         )
@@ -359,6 +371,11 @@ class Document(BaseModel, metaclass=DocumentMetaclass, abstract=True):
         *args: Any,
         **kwargs: Any,
     ) -> AsyncIterator["GenericDocument"]:
+        """Returns an iterable over a cursor returning documents matching ``filter``.
+
+        ``args`` and ``kwargs`` are passed to motor's ``find`` method.
+        """
+
         async def context() -> AsyncIterator["GenericDocument"]:
             async for doc in cls.collection().find(filter, *args, **kwargs):
                 yield cls(**doc)
@@ -383,6 +400,11 @@ class Document(BaseModel, metaclass=DocumentMetaclass, abstract=True):
         *args: Any,
         **kwargs: Any,
     ) -> Optional["GenericDocument"]:
+        """Finds a document and deletes it.
+
+        This method works exactly like pymongo's find_one_and_delete except that this
+        returns a :class:`Document` instance.
+        """
         result = await cls.collection().find_one_and_delete(filter, *args, **kwargs)
         return cls(**result) if result else None
 
@@ -395,6 +417,13 @@ class Document(BaseModel, metaclass=DocumentMetaclass, abstract=True):
         *args: Any,
         **kwargs: Any,
     ) -> Optional["GenericDocument"]:
+        """Finds a document and replaces it.
+
+        This method works exactly like pymongo's find_one_and_replace except that this
+        returns a :class:`Document` instance. Note that if you specify
+        ``return_document=ReturnDocument.AFTER`` this method will reload the
+        ``replacement`` document.
+        """
         data = replacement.mongo() if isinstance(replacement, Document) else replacement
         result = await cls.collection().find_one_and_replace(
             filter, data, return_document=return_document, *args, **kwargs
@@ -416,6 +445,11 @@ class Document(BaseModel, metaclass=DocumentMetaclass, abstract=True):
         *args: Any,
         **kwargs: Any,
     ) -> Optional["GenericDocument"]:
+        """Finds a document and updates it.
+
+        This method works exactly like pymongo's find_one_and_update except that this
+        returns a :class:`Document` instance.
+        """
         result = await cls.collection().find_one_and_update(
             filter, update, *args, **kwargs
         )
