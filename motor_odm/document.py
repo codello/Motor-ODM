@@ -10,6 +10,7 @@ from typing import (
     Callable,
     Iterable,
     Iterator,
+    List,
     Mapping,
     Optional,
     Sequence,
@@ -80,7 +81,7 @@ class Mongo:
     The value for this field cannot be specified in the ``Mongo`` class but as a keyword argument on class creation.
     """
 
-    indexes: Iterable[IndexModel] = []
+    indexes: List[IndexModel] = []
     """A list of indexes to create for the collection."""
 
     codec_options: Optional[CodecOptions] = None
@@ -108,18 +109,21 @@ class DocumentMetaclass(ModelMetaclass):
         **kwargs: Any,
     ) -> "DocumentMetaclass":
         mcs.validate(name, bases, namespace, abstract)
-        mongo: MongoType = Mongo
+        mongo: "MongoType" = Mongo
         for base in reversed(bases):
             if base != BaseModel and base != Document and issubclass(base, Document):
-                # noinspection PyTypeChecker
-                mongo = inherit_class("Mongo", base.__mongo__, mongo)
-        # noinspection PyTypeChecker
-        mongo = inherit_class("Mongo", namespace.get("Mongo"), mongo)
+                mongo = mcs.inherit_mongo(base.__mongo__, mongo)
+        mongo = mcs.inherit_mongo(namespace.get("Mongo"), mongo)
         mongo.abstract = abstract
 
         return super().__new__(  # type: ignore
             mcs, name, bases, {"__mongo__": mongo, **namespace}, **kwargs
         )
+
+    @classmethod
+    def inherit_mongo(mcs, self, parent) -> "MongoType":
+        # noinspection PyTypeChecker
+        return inherit_class("Mongo", self, parent, merge={"indexes"})
 
     @classmethod
     def validate(
@@ -177,7 +181,7 @@ class Document(BaseModel, metaclass=DocumentMetaclass, abstract=True):
         # Uses something other than `self` the first arg to allow "self" as a settable attribute
         if __pydantic_self__.__mongo__.abstract:
             raise TypeError(
-                f"Cannot instanciate abstract document {__pydantic_self__.__class__.__name__}"
+                f"Cannot instantiate abstract document {__pydantic_self__.__class__.__name__}"
             )
         super().__init__(**data)
 

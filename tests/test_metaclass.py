@@ -39,13 +39,11 @@ def test_abstract_in_mongo():
 
 
 def test_abstract_document_with_collection():
-    with pytest.raises(TypeError):
+    class Abstract(Document, abstract=True):
+        class Mongo:
+            collection = "test"
 
-        class Abstract(Document, abstract=True):
-            class Mongo:
-                collection = "test"
-
-            field: str
+        field: str
 
 
 def test_abstract_subclass():
