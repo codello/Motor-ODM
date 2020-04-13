@@ -8,7 +8,6 @@ from typing import (
     Any,
     AsyncIterator,
     Callable,
-    Iterable,
     Iterator,
     List,
     Mapping,
@@ -113,7 +112,7 @@ class DocumentMetaclass(ModelMetaclass):
         for base in reversed(bases):
             if base != BaseModel and base != Document and issubclass(base, Document):
                 mongo = mcs.inherit_mongo(base.__mongo__, mongo)
-        mongo = mcs.inherit_mongo(namespace.get("Mongo"), mongo)
+        mongo = mcs.inherit_mongo(namespace.get("Mongo"), mongo)  # type: ignore
         mongo.abstract = abstract
 
         return super().__new__(  # type: ignore
@@ -121,7 +120,7 @@ class DocumentMetaclass(ModelMetaclass):
         )
 
     @classmethod
-    def inherit_mongo(mcs, self, parent) -> "MongoType":
+    def inherit_mongo(mcs, self: "MongoType", parent: "MongoType") -> "MongoType":
         # noinspection PyTypeChecker
         return inherit_class("Mongo", self, parent, merge={"indexes"})
 

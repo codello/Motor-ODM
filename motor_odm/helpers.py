@@ -11,7 +11,6 @@ from typing import (
     Any,
     Callable,
     Iterable,
-    List,
     Optional,
     Tuple,
     TypeVar,
@@ -40,11 +39,11 @@ def inherit_class(
                   merged. This only works for some types.
     :return: A new type inheriting from ``self`` and ``parents``.
     """
-    base_classes: Tuple["T", ...]
+    base_classes: Tuple[type, ...]
     if not self:
         base_classes = (parent,)
     elif self == parent:
-        base_classes = self
+        base_classes = (self,)
     else:
         base_classes = self, parent
     clazz = type(name, base_classes, {})
@@ -59,6 +58,7 @@ def inherit_class(
 
 
 def merge_values(value1: Any, value2: Any) -> Any:
+    copy: Any
     if isinstance(value1, list):
         copy = value1.copy()
         copy.extend(value2)
