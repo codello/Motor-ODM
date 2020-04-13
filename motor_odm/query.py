@@ -47,6 +47,12 @@ def q(*args: Any, **kwargs: Any) -> "Query":
 
     >>> q(age__gt=20, age__lt=100)
     {'age': {'$gt': 20, '$lt': 100}}
+
+    Lastly you can combine queries with ``&``, ``|`` and ``^``. The ``^`` operator means
+    *nor* in this case.
+
+    >>> (q(age=20) & q(name="John")) | q(age=21)
+    {'$or': [{'$and': [{'age': 20}, {'name': 'John'}]}, {'age': 21}]}
     """
     return Query(*args, **kwargs)
 
@@ -133,7 +139,7 @@ class Query(Dict[str, Any]):
             self["_id"] = {"$in": ids}
         self.extend(**kwargs)
 
-    def extend(self, **kwargs: Any) -> None:
+    def extend(self, **kwargs: "DictStrAny") -> None:
         """Adds fields to this query.
 
         This method adds the same keys and values that you would get using the :func:`q`
@@ -189,6 +195,24 @@ class Query(Dict[str, Any]):
         """Adds a comment to this query."""
         self["$comment"] = comment
         return self
+
+    def __and__(self, other: dict) -> "Query":
+        assert isinstance(other, dict)
+        query = Query()
+        query.update({"$and": [self, other]})
+        return query
+
+    def __or__(self, other: dict) -> "Query":
+        assert isinstance(other, dict)
+        query = Query()
+        query.update({"$or": [self, other]})
+        return query
+
+    def __xor__(self, other: dict) -> "Query":
+        assert isinstance(other, dict)
+        query = Query()
+        query.update({"$nor": [self, other]})
+        return query
 
 
 def _transform_op(op: Optional[str]) -> str:
