@@ -124,11 +124,11 @@ class Query(Dict[str, Any]):
         super().__init__()
         if len(args) == 1:
             id_value = args[0]
-            # Use NaN as a "nothing matches" value. Although this is technically not
-            # true, we make the assumption here that NaN will never be used as an ID
-            # value.
-            # https://stackoverflow.com/questions/23917459/best-way-to-create-a-mongo-expression-that-never-matches
-            self["_id"] = math.nan if id_value is None else id_value
+            if id_value is None:
+                # Return a query that matches nothing if id_value is None
+                self["X"] = {"$in": []}
+            else:
+                self["_id"] = id_value
         elif len(args) > 1:
             ids = [arg for arg in args if arg is not None]
             self["_id"] = {"$in": ids}

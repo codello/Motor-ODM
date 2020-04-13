@@ -31,6 +31,7 @@ from motor_odm.helpers import monkey_patch
 
 from .helpers import inherit_class
 from .indexes import IndexManager
+from .query import q
 
 if TYPE_CHECKING:
     from pydantic.typing import (  # noqa: F401
@@ -287,7 +288,9 @@ class Document(BaseModel, metaclass=DocumentMetaclass, abstract=True):
     async def insert(self, *args: Any, **kwargs: Any) -> bool:
         """Inserts the object into the database.
 
-        The object is inserted as a new object.
+        The object is inserted as a new object. If the document already exists this
+        method will raise an error. Use :meth:`save` instead if you want to update an
+        existing value.
         """
         try:
             result = await self.collection().insert_one(self.mongo(), *args, **kwargs)
@@ -312,17 +315,25 @@ class Document(BaseModel, metaclass=DocumentMetaclass, abstract=True):
             obj.id = inserted_id
 
     async def save(self, upsert: bool = True, *args: Any, **kwargs: Any,) -> bool:
-        assert self.id is not None
-        result = await self.collection().replace_one(
-            {"_id": self.id}, self.mongo(), *args, **kwargs
-        )
-        return result.modified_count == 1  # type: ignore
+        """Saves this instance to the database.
 
-    async def upsert(self, *args: Any, **kwargs: Any) -> bool:
-        if self.id is None:
-            return await self.insert(*args, **kwargs)
+        By default this method creates the document in the database if it doesn't exist.
+        If you don't want this behavior you can pass ``upsert=False``.
+
+        Any ``args`` and ``kwargs`` are passed to motor's ``replace_one`` method.
+
+        :param upsert: Whether to create the document if it doesn't exist.
+        :returns: ``True`` if the document was inserted/updated, ``False`` if nothing
+                  changed. This may also indicate that the document was not changed.
+        """
+        result = await self.collection().replace_one(
+            q(self.id), self.mongo(), upsert=upsert, *args, **kwargs
+        )
+        if result.upserted_id is not None:
+            self.id = result.upserted_id
+            return True
         else:
-            return await self.save(*args, **kwargs)
+            return result.modified_count == 1
 
     async def reload(self, *args: Any, **kwargs: Any) -> bool:
         """Reloads a document from the database.
@@ -360,7 +371,7 @@ class Document(BaseModel, metaclass=DocumentMetaclass, abstract=True):
         :returns: The number of documents deleted.
         """
         result = await cls.collection().delete_many(
-            {"_id": {"$in": [obj.id for obj in objects]}}
+            q(_id__in=[obj.id for obj in objects])
         )
         return result.deleted_count  # type: ignore
 

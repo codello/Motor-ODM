@@ -60,19 +60,20 @@ async def test_save():
     assert await User.count_documents() == 4
 
 
-async def test_save_new():
+async def test_save_new(db: AsyncIOMotorDatabase):
     User = make_model()
     user = User(name="Johnny")
-    with pytest.raises(AssertionError):
-        await user.save()
+    assert await user.save() is True
+    assert user.id is not None
+    assert await User.count_documents() == 1
 
 
 @pytest.mark.usefixtures("data")
-async def test_upsert_existing():
+async def test_update_existing():
     User = make_model()
     user = await User.find_one({"name": "John"})
     user.name = "Johnny"
-    result = await user.upsert()
+    result = await user.save(upsert=False)
     assert result is True
     assert await User.count_documents() == 4
 
@@ -81,9 +82,9 @@ async def test_upsert_existing():
 async def test_upsert_new():
     User = make_model()
     user = User(name="Johnny")
-    result = await user.upsert()
-    assert result is True
-    assert await User.count_documents() == 5
+    result = await user.save(upsert=False)
+    assert result is False
+    assert await User.count_documents() == 4
 
 
 @pytest.mark.usefixtures("data")
