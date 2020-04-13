@@ -107,6 +107,15 @@ async def test_reload_deleted():
 
 
 @pytest.mark.usefixtures("data")
+async def test_delete():
+    User = make_model()
+    user = await User.find_one({"name": "John"})
+    await user.delete()
+    assert await User.count_documents() == 3
+    assert await User.find_one({"name": "John"}) is None
+
+
+@pytest.mark.usefixtures("data")
 async def test_delete_many():
     User = make_model()
     users = [user async for user in User.find({"admin": True})]

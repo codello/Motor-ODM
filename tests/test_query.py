@@ -71,6 +71,14 @@ def test_extend_eq(query):
     }
 
 
+def test_extend_eq2(query):
+    query.extend(age=30)
+    assert query == {
+        "name": "Name",
+        "age": {"$eq": 30, "$gt": 20, "$lt": 100},
+    }
+
+
 def test_extend_eq_same(query):
     query.extend(name="Name")
     assert query == {
@@ -105,9 +113,12 @@ def test_extend_op_conflict(query):
         query.extend(age__lt=25)
 
 
-def test_json_schema():
-    query = Query.schema({"ABC": "DEF"})
-    assert query == {"$jsonSchema": {"ABC": "DEF"}}
+@pytest.mark.parametrize(
+    "fn,string", [("schema", "jsonSchema"), ("expr", "expr"), ("where", "where")]
+)
+def test_special(fn, string):
+    query = getattr(Query, fn)({"ABC": "DEF"})
+    assert query == {f"${string}": {"ABC": "DEF"}}
 
 
 def test_text_query():
