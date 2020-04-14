@@ -13,7 +13,7 @@ async def make_model(drop: bool = True, **kwargs):
             collection = "users"
             indexes = [IndexModel("name", **kwargs)]
 
-    await User.init_indexes(drop=drop)
+    await User.ensure_indexes(drop=drop)
     return User
 
 
@@ -27,7 +27,7 @@ async def test_create_simple_indexes(db: AsyncIOMotorDatabase):
 
         name: str
 
-    await User.init_indexes()
+    await User.ensure_indexes()
     assert len(await User.collection().index_information()) == 2
 
 
@@ -37,7 +37,7 @@ async def test_create_multiple_indexes(db: AsyncIOMotorDatabase):
             collection = "users"
             indexes = [IndexModel("name"), IndexModel("age")]
 
-    await User.init_indexes()
+    await User.ensure_indexes()
     assert len(await User.collection().index_information()) == 3
 
 
@@ -49,7 +49,7 @@ async def test_add_index(db: AsyncIOMotorDatabase):
             collection = "users"
             indexes = [IndexModel("name"), IndexModel("age")]
 
-    await User2.init_indexes()
+    await User2.ensure_indexes()
     indexes = await User2.collection().index_information()
     assert len(indexes) == 3
 
@@ -68,7 +68,7 @@ async def test_drop_index(db: AsyncIOMotorDatabase):
             collection = "users"
             indexes = [IndexModel("name"), IndexModel("age")]
 
-    await User.init_indexes()
+    await User.ensure_indexes()
     await make_model()
     indexes = await User.collection().index_information()
     assert len(indexes) == 2
@@ -80,7 +80,7 @@ async def test_no_drop_index(db: AsyncIOMotorDatabase):
             collection = "users"
             indexes = [IndexModel("name"), IndexModel("age")]
 
-    await User.init_indexes()
+    await User.ensure_indexes()
     await make_model(drop=False)
     indexes = await User.collection().index_information()
     assert len(indexes) == 3

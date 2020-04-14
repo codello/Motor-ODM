@@ -7,7 +7,7 @@ Note that all patches are applied automatically at **import time**.
 
 from typing import Any
 
-from .document import Document
+from .document import MongoDocument
 from .helpers import monkey_patch
 
 
@@ -22,7 +22,7 @@ def patch_fastapi() -> None:
 
     @monkey_patch(fastapi.routing)
     def _prepare_response_content(res: Any, *args: Any, **kwargs: Any) -> Any:
-        if isinstance(res, Document):
+        if isinstance(res, MongoDocument):
             return res
         return _prepare_response_content.original(res, **kwargs)  # type: ignore
 

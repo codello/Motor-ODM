@@ -20,6 +20,18 @@ def test_document_without_mongo_class():
             field: str
 
 
+def test_subclass():
+    class One(Document):
+        class Mongo:
+            collection = "test"
+
+    with pytest.raises(TypeError):
+
+        class Two(One):
+            class Mongo:
+                collection = "test2"
+
+
 def test_abstract_document():
     class Abstract(Document, abstract=True):
         field: str

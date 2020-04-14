@@ -6,16 +6,7 @@ packages or frameworks and are adapted here to reduce the number of dependencies
 import inspect
 from inspect import isclass, ismodule
 from types import ModuleType
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Iterable,
-    Optional,
-    Sequence,
-    TypeVar,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Callable, Optional, Set, Tuple, TypeVar, Union
 
 if TYPE_CHECKING:
     T = TypeVar("T", bound=type)
@@ -23,9 +14,7 @@ if TYPE_CHECKING:
     D = TypeVar("D", bound=Union[object, Callable[[Any], Any]])
 
 
-def inherit_class(
-    name: str, self: Optional["T"], parent: "T", merge: Iterable[str] = None
-) -> "T":
+def inherit_class(name: str, self: Optional["T"], parent: "T") -> "T":
     """
     Performs a pseudo-inheritance by creating a new class that inherits from ``self``
     and ``parents``. This is useful to support intuitive inheritance on inner classes
@@ -42,21 +31,22 @@ def inherit_class(
                   merged. This only works for some types.
     :return: A new type inheriting from ``self`` and ``parents``.
     """
-    base_classes: Sequence["T"]
+    base_classes: Tuple["T", ...]
+    merge: Set[str] = {"__merge__"}
     if not self:
         base_classes = (parent,)
     elif self == parent:
         base_classes = (self,)
     else:
         base_classes = self, parent
+        merge = merge | getattr(parent, "__merge__", set())
     clazz = type(name, base_classes, {})
-    if merge is None:
-        merge = {}
-    for key in merge:
-        if hasattr(self, key) and hasattr(parent, key):
-            value1 = getattr(parent, key)
-            value2 = getattr(self, key)
-            setattr(clazz, key, merge_values(value1, value2))
+    for field in merge:
+        if hasattr(self, field) and hasattr(parent, field):
+            value1 = getattr(parent, field)
+            value2 = getattr(self, field)
+            setattr(clazz, field, merge_values(value1, value2))
+
     return clazz  # type: ignore
 
 
@@ -66,8 +56,8 @@ def merge_values(value1: Any, value2: Any) -> Any:
     This method works only for specific collection types (namely lists, dicts and sets).
     For other values a :exc:`ValueError` is raised.
 
-    The type of the resulting value is determined by the type of ``value2``, however
-    ``value1`` may override some of the contents in ``value2`` (e.g. replace values for
+    The type of the resulting value is determined by the type of ``value1``, however
+    ``value2`` may override some of the contents in ``value2`` (e.g. replace values for
     dict keys).
     """
     copy: Any
