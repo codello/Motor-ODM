@@ -6,9 +6,25 @@ packages or frameworks and are adapted here to reduce the number of dependencies
 import inspect
 from inspect import isclass, ismodule
 from types import ModuleType
-from typing import TYPE_CHECKING, Any, Callable, Optional, Set, Tuple, TypeVar, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    TypeVar,
+    Union,
+)
+
+from bson import SON
+from motor.core import AgnosticCollection
+from pymongo import IndexModel
 
 if TYPE_CHECKING:
+    from pydantic.typing import DictStrAny
+
     T = TypeVar("T", bound=type)
     C = TypeVar("C", bound=Callable)
     D = TypeVar("D", bound=Union[object, Callable[[Any], Any]])
@@ -35,8 +51,9 @@ def inherit_class(name: str, self: Optional["T"], parent: "T") -> "T":
     merge: Set[str] = {"__merge__"}
     if not self:
         base_classes = (parent,)
-    elif self == parent:
+    elif self == parent or parent in self.__bases__:
         base_classes = (self,)
+        merge = set()
     else:
         base_classes = self, parent
         merge = merge | getattr(parent, "__merge__", set())
@@ -76,6 +93,27 @@ def merge_values(value1: Any, value2: Any) -> Any:
             f"into value of type {type(value1)}"
         )
     return copy
+
+
+def equal_indexes(index: IndexModel, db_index: SON) -> bool:
+    """Compares the specified ``index`` and ``db_index``.
+
+    This method return ``True`` if the ``index`` specification can be considered
+    equal to the existing ``db_index`` in the database.
+    """
+    dbi = db_index.copy()
+    del dbi["v"]
+    del dbi["ns"]
+    return dbi == index.document  # type: ignore
+
+
+def equal_views(
+    name: str, view_on: str, pipeline: List["DictStrAny"], collection: DictStrAny
+):
+    return (
+        collection["name"] == name
+        and {"viewOn": view_on, "pipeline": pipeline} == collection["options"]
+    )
 
 
 def monkey_patch(

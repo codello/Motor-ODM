@@ -4,7 +4,7 @@ import os
 import pytest
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 
-from motor_odm import Document
+from motor_odm import MongoDocument
 
 
 @pytest.fixture(scope="function")
@@ -12,7 +12,7 @@ async def db() -> AsyncIOMotorDatabase:
     client = AsyncIOMotorClient("localhost")
     db = client["test"]
     await client.drop_database(db)
-    Document.use(db)
+    MongoDocument.use(db)
     yield db
     await client.drop_database(db)
 

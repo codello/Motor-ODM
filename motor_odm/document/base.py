@@ -15,7 +15,7 @@ from typing import (
 )
 
 from bson import CodecOptions
-from motor.core import AgnosticCollection, AgnosticDatabase
+from motor.core import AgnosticClientSession, AgnosticCollection, AgnosticDatabase
 from pydantic import BaseModel
 from pydantic.main import ModelMetaclass
 from pymongo import ReadPreference, WriteConcern
@@ -52,7 +52,6 @@ class DocumentMetaclass(ModelMetaclass):
             if base != BaseModel and issubclass(base, MongoDocument):
                 mongo = inherit_class("Mongo", base.__mongo__, mongo)
         mongo = inherit_class("Mongo", namespace.get("Mongo"), mongo)
-        mcs.validate(name, bases, namespace, abstract, mongo)
         return super().__new__(  # type: ignore
             mcs,
             name,
@@ -60,27 +59,6 @@ class DocumentMetaclass(ModelMetaclass):
             {"__mongo__": mongo, "__abstract__": abstract, **namespace},
             **kwargs,
         )
-
-    @classmethod
-    def validate(
-        mcs,
-        name: str,
-        bases: Tuple[type, ...],
-        namespace: "DictStrAny",
-        abstract: bool,
-        mongo: "MongoType",
-    ) -> None:
-        if not abstract and not mongo.collection:
-            raise TypeError(f"{name} is not abstract and does not define a collection.")
-        for base in bases:
-            if (
-                base != BaseModel
-                and issubclass(base, MongoDocument)
-                and not base.__abstract__
-            ):
-                raise TypeError(
-                    f"Cannot inherit from non-abstract document {base.__name__}"
-                )
 
 
 class MongoDocument(BaseModel, metaclass=DocumentMetaclass, abstract=True):
@@ -94,6 +72,13 @@ class MongoDocument(BaseModel, metaclass=DocumentMetaclass, abstract=True):
                      abstract document to provide common fields to multiple documents.
     """
 
+    def __init_subclass__(cls, **kwargs):
+        mongo = cls.__mongo__
+        if not cls.__abstract__ and not mongo.collection:
+            raise TypeError(
+                f"{cls.__name__} is not abstract and does not define a collection."
+            )
+
     class Config:
         """:meta private:"""
 
@@ -103,10 +88,7 @@ class MongoDocument(BaseModel, metaclass=DocumentMetaclass, abstract=True):
         allow_mutation = False
 
     class Mongo:
-        """This class defines default values for the ``Mongo`` class of a document.
-
-        These are the values that are actually used.
-        """
+        """This class defines default values for the ``Mongo`` class of a document."""
 
         __merge__: Set[str] = set()
         """:meta private:"""
@@ -159,7 +141,7 @@ class MongoDocument(BaseModel, metaclass=DocumentMetaclass, abstract=True):
 
     @classmethod
     def use(cls: Type["MongoDocument"], db: AgnosticDatabase) -> None:
-        """Sets the database to be used by this :class:`Document`.
+        """Sets the database to be used by this document.
 
         The database will also be used by subclasses of this class unless they
         :meth:`use` their own database. This method has to be invoked before the ODM
@@ -173,16 +155,22 @@ class MongoDocument(BaseModel, metaclass=DocumentMetaclass, abstract=True):
         """Returns the database that is currently associated with this document.
 
         If no such database exists this returns the database of the parent document (its
-        superclass). If no :class:`Document` class had its :meth:`use` method called to
-        set a db, an :class:`AttributeError` is raised.
+        superclass). If no :class:`MongoDocument` class had its :meth:`use` method
+        called to set a db, an :class:`AttributeError` is raised.
         """
         if not hasattr(cls, "__db__"):
             raise AttributeError("Accessing database without using it first.")
         return cls.__db__
 
     @classmethod
+    async def ensure_collection(
+        cls, force: bool = False, session: AgnosticClientSession = None, **kwargs: Any,
+    ):
+        pass
+
+    @classmethod
     def collection(cls: Type["MongoDocument"]) -> AgnosticCollection:
-        """Returns the collection for this :class:`Document`.
+        """Returns the collection for this document.
 
         The collection uses the ``codec_options``, ``read_preference``,
         ``write_concern`` and ``read_concern`` from the document's ```Mongo``` class.

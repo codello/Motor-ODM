@@ -12,8 +12,9 @@ from typing import (
 
 from bson import ObjectId
 from motor.core import AgnosticClientSession
-from pydantic import Field
+from pydantic import BaseModel, Field
 from pymongo import IndexModel, ReturnDocument
+from pymongo.collation import Collation
 from pymongo.errors import DuplicateKeyError
 
 from motor_odm.document.base import MongoDocument
@@ -25,7 +26,6 @@ if TYPE_CHECKING:
     from pydantic.typing import AbstractSetIntStr, DictIntStrAny, DictStrAny
 
     GenericDocument = TypeVar("GenericDocument", bound="Document")
-    MongoType = Type["Document.Mongo"]
 
 
 @monkey_patch(ObjectId)
@@ -64,19 +64,28 @@ class Document(MongoDocument, abstract=True):
                      multiple documents into a common abstract super-document.
     """
 
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        for base in cls.__bases__:
+            if issubclass(base, Document) and not base.__abstract__:
+                raise TypeError(
+                    f"Cannot inherit from non-abstract document {base.__name__}"
+                )
+
     class Config:
         """:meta private:"""
 
         allow_mutation = True
 
-    class Mongo:
+    class Mongo(MongoDocument.Mongo):
         __merge__ = {"indexes"}
+        collation: Collation = None
         indexes: List[IndexModel] = []
         """A list of indexes to create for the collection."""
 
     if TYPE_CHECKING:
         # populated by the metaclass, defined here to help IDEs only
-        __mongo__: MongoType  # type: ignore
+        __mongo__: Type[Mongo]
 
     id: ObjectId = Field(None, alias="_id")
     """The document's ID in the database.
@@ -86,6 +95,23 @@ class Document(MongoDocument, abstract=True):
     this field you **must** set its alias to ``_id`` in order for your IDs to be
     recognized as such by MongoDB.
     """
+
+    @classmethod
+    async def ensure_collection(
+        cls, session: AgnosticClientSession = None, **kwargs: Any
+    ):
+        # TODO: Validate
+        mongo = cls.__mongo__
+        await cls.db().create_collection(
+            mongo.collection,
+            mongo.codec_options,
+            mongo.read_preference,
+            mongo.write_concern,
+            mongo.read_concern,
+            session=session,
+            collation=mongo.collation,
+            **kwargs,
+        )
 
     @classmethod
     async def ensure_indexes(

@@ -4,6 +4,8 @@ from bson import SON
 from motor.core import AgnosticClientSession, AgnosticCollection
 from pymongo import IndexModel
 
+from motor_odm.helpers import equal_indexes
+
 
 class IndexManager:
     """An ``IndexManager`` instance can create a specific state concerning indexes.
@@ -46,7 +48,7 @@ class IndexManager:
             db_index = self.get_db_index(index.document["key"])
             if db_index is None:
                 new_indexes.append(index)
-            elif self.equal(index, db_index):
+            elif equal_indexes(index, db_index):
                 del self.db_indexes[db_index["name"]]
             else:
                 await self.collection.drop_index(
@@ -87,15 +89,3 @@ class IndexManager:
             if index["key"] == spec:
                 return index
         return None
-
-    @staticmethod
-    def equal(index: IndexModel, db_index: SON) -> bool:
-        """Compares the specified ``index`` and ``db_index``.
-
-        This method return ``True`` if the ``index`` specification can be considered
-        equal to the existing ``db_index`` in the database.
-        """
-        dbi = db_index.copy()
-        del dbi["v"]
-        del dbi["ns"]
-        return dbi == index.document  # type: ignore
